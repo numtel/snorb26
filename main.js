@@ -62,8 +62,14 @@ document.getElementById('tools').addEventListener('pointerdown', (e) => {
   appState.toolMode = btn.dataset.tool;
   document.querySelectorAll('button[data-tool]').forEach(b => b.classList.toggle('active', b === btn));
 });
-document.getElementById('brushSize').addEventListener('input', e => brush.radius = parseInt(e.target.value, 10));
-document.getElementById('brushSmooth').addEventListener('input', e => brush.smooth = parseFloat(e.target.value));
+document.getElementById('brushSize').addEventListener('input', e => {
+  brush.radius = parseInt(e.target.value, 10)
+  saveMapToLocal();
+});
+document.getElementById('brushSmooth').addEventListener('input', e => {
+  brush.smooth = parseFloat(e.target.value)
+  saveMapToLocal();
+});
 
 // Canvas Events
 const pointers = new Map();

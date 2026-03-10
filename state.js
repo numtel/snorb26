@@ -90,6 +90,7 @@ export function saveMapToLocal() {
         panY: camera.targetPanY,
         zoom: camera.targetZoom
       },
+      brush,
       rotation: appState.rotation
     };
     localStorage.setItem('dencity_map_data', JSON.stringify(data));
@@ -114,6 +115,14 @@ export function loadMapFromLocal() {
     }
 
     if (data.rotation !== undefined) appState.rotation = data.rotation;
+
+    if(data.brush) {
+      brush.radius = data.brush.radius;
+      brush.smooth = data.brush.smooth;
+
+      document.getElementById('brushSize').value = brush.radius;
+      document.getElementById('brushSmooth').value = brush.smooth;
+    }
     return true;
   } catch (e) {
     return false;
