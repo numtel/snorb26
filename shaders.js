@@ -115,5 +115,5 @@ void main(){
 
 export const vsPick = vsTerrain;
 export const fsPick = `#version 300 es
-precision highp float; flat in int v_tileId; out vec4 fragColor;
-void main(){ int v = v_tileId + 1; fragColor = vec4(float(v & 255)/255.0, float((v >> 8) & 255)/255.0, float((v >> 16) & 255)/255.0, 1.0); }`;
+precision highp float; precision highp int; flat in int v_tileId; out vec4 fragColor;
+void main(){ int v = v_tileId + 1; fragColor = vec4(mod(float(v), 256.0)/255.0, float((v >> 8) & 255)/255.0, float((v >> 16) & 255)/255.0, 1.0); }`;
