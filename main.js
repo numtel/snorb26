@@ -1,6 +1,6 @@
 import { clamp, camera, selected, levelSel, paintStroke, brush, appState, screenToWorld, tileCenterWorld, elevations, loadMapFromLocal } from './state.js';
 import { initWebGL, canvas, requestPick, rebuildPickResources, draw, uploadElevations, rebuildBuildingInstances } from './renderer.js';
-import { seedDemo, brushApplyDelta, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, rotateGrid } from './tools.js';
+import { seedDemo, brushApplyDelta, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, placeCustomBuildingAtSelected, rotateGrid } from './tools.js';
 import { saveMapToLocal, uploadMapFile, downloadMapFile } from './state.js';
 
 // Setup Map & DOM Elements
@@ -201,6 +201,13 @@ canvas.addEventListener("pointerdown", (e) => {
 
     if (appState.toolMode === 'build') {
       placeBuildingAtSelected();
+    } else if (appState.toolMode === 'custom-build') {
+      const url = document.getElementById('customUrl').value.trim();
+      if (url) {
+        placeCustomBuildingAtSelected(url);
+      } else {
+        alert("Please enter a custom HTTPS URL for the building sprite.");
+      }
     } else if (appState.toolMode === 'raise' || appState.toolMode === 'lower') {
       paintStroke.active = true;
       paintStroke.pointerId = e.pointerId;

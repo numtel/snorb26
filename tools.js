@@ -1,5 +1,5 @@
-import { GRID_W, GRID_H, TILE_W, TILE_H, ELEV_STEP, clamp, elevations, buildingAt, paintStroke, brush, BUILD_SPRITES, selected, levelSel, camera, tileCenterWorld } from './state.js';
-import { canvas, uploadElevations, rebuildBuildingInstances, requestPick } from './renderer.js';
+import { GRID_W, GRID_H, TILE_W, TILE_H, ELEV_STEP, clamp, elevations, buildingAt, paintStroke, brush, BUILD_SPRITES, selected, levelSel, camera, tileCenterWorld, customBuildingRegistry } from './state.js';
+import { canvas, uploadElevations, rebuildBuildingInstances, requestPick, loadCustomTexture } from './renderer.js';
 import { saveMapToLocal } from './state.js';
 
 export function seedDemo() {
@@ -202,4 +202,21 @@ export function setHighlightedTile(x, y) {
 
   // 3. Trigger the GPU-based picking logic at those coordinates
   requestPick(sx, sy);
+}
+
+export function placeCustomBuildingAtSelected(url) {
+  if (!selected.has) return;
+
+  // Add the URL to the registry if it doesn't exist yet
+  let idx = customBuildingRegistry.indexOf(url);
+  if (idx === -1) {
+    customBuildingRegistry.push(url);
+    idx = customBuildingRegistry.length - 1;
+    loadCustomTexture(url); // Trigger fetch
+  }
+
+  // Base buildings use 1-4. Custom starts at index 5.
+  buildingAt[selected.id] = BUILD_SPRITES + 1 + idx;
+  rebuildBuildingInstances();
+  saveMapToLocal();
 }

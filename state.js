@@ -1,4 +1,4 @@
-import { uploadElevations, rebuildBuildingInstances} from './renderer.js';
+import { uploadElevations, rebuildBuildingInstances, loadCustomTexture} from './renderer.js';
 export const GRID_W = 256;
 export const GRID_H = 256;
 export const TILE_W = 64;
@@ -9,6 +9,7 @@ export const BUILD_SPRITES = 4;
 
 export const elevations = new Uint8Array(GRID_W * GRID_H);
 export const buildingAt = new Uint8Array(GRID_W * GRID_H);
+export const customBuildingRegistry = [];
 
 export const SC3K_COLOR_STOPS = [
   { t:   0, c:[  0/255,  20/255,  60/255] },
@@ -84,6 +85,7 @@ export function serializeMap() {
     grid: { w: GRID_W, h: GRID_H },
     elevations: Array.from(elevations),
     buildingAt: Array.from(buildingAt),
+    customBuildingRegistry: Array.from(customBuildingRegistry),
     camera: {
       panX: camera.targetPanX,
       panY: camera.targetPanY,
@@ -101,6 +103,12 @@ export function deserializeMap(data) {
   try {
     elevations.set(data.elevations);
     buildingAt.set(data.buildingAt);
+
+    if (data.customBuildingRegistry) {
+       customBuildingRegistry.length = 0;
+       customBuildingRegistry.push(...data.customBuildingRegistry);
+       customBuildingRegistry.forEach(url => loadCustomTexture(url));
+    }
 
     if (data.camera) {
       camera.panX = camera.targetPanX = data.camera.panX;
