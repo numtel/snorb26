@@ -19,7 +19,8 @@ body.window-inactive canvas {
 }
 
 #tools .ctl {
-  display:flex; align-items:center; gap:6px; padding:0 4px;
+  display:flex; align-items:center; gap:6px; padding:0px 25px; margin: 3px 0;
 }
 #tools input[type="range"] { width:110px; max-width:40vw; }
+#tools input[type="text"] { background:var(--face); color:var(--text); width:110px; max-width:40vw; border: 1px inset var(--etch); padding: 3px 8px; }
 
