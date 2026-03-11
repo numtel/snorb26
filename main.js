@@ -127,9 +127,12 @@ function menuClicks(command, tool) {
 
     case 'rotate-left': rotateGrid(camera, false); break;
     case 'rotate-right': rotateGrid(camera, true); break;
+    case 'tilt-up': camera.targetTilt = clamp(camera.targetTilt * 1.05, camera.minTilt, camera.maxTilt); break;
+    case 'tilt-down': camera.targetTilt = clamp(camera.targetTilt / 1.05, camera.minTilt, camera.maxTilt); break;
     default:
       console.error('invalid menu item', command);
   }
+  saveMapToLocal();
 }
 
 window.addEventListener('pointerup', (e) => {
@@ -355,13 +358,24 @@ const l = camera.lerpFactor;
     if (Math.abs(velocityY) < 0.01) velocityY = 0;
   }
 
+  const oldTilt = camera.tilt;
+
   // Interpolation logic
   camera.panX += (camera.targetPanX - camera.panX) * l;
   camera.panY += (camera.targetPanY - camera.panY) * l;
   camera.zoom += (camera.targetZoom - camera.zoom) * l;
+  camera.tilt += (camera.targetTilt - camera.tilt) * l;
+
+  // Lock the screen center: If the world just stretched due to tilt,
+  // we must proportionally stretch the pan targeting so the camera doesn't wildly slide away.
+  if (oldTilt !== camera.tilt && oldTilt > 0) {
+    const ratio = camera.tilt / oldTilt;
+    camera.panY *= ratio;
+    camera.targetPanY *= ratio;
+  }
 
   draw(now);
-  hud.textContent = `${appState.toolMode}\nzoom: ${Math.round(camera.zoom * 100)}%\ntile: (${selected.x}, ${selected.y})`;
+  hud.textContent = `${appState.toolMode}\nzoom: ${Math.round(camera.zoom * 100)}%, tilt: ${Math.round(camera.tilt * 100)}%\ntile: (${selected.x}, ${selected.y})`;
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);

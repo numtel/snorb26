@@ -79,7 +79,7 @@ export function rotateGrid(camera, clockwise = true) {
   // wx = (tx - ty) * (TILE_W / 2)
   // wy = (tx + ty) * (TILE_H / 2)
   const halfW = TILE_W * 0.5;
-  const halfH = TILE_H * 0.5;
+  const halfH = TILE_H * camera.tilt * 0.5;
   const tx = (camera.panY / halfH + camera.panX / halfW) * 0.5;
   const ty = (camera.panY / halfH - camera.panX / halfW) * 0.5;
   const tileInCenter = getTileInScreenCenter();
@@ -166,21 +166,12 @@ export function setTileScreenPosition(tx, ty, sx, sy) {
 }
 
 export function getTileScreenPos(tx, ty) {
-  // 1. Calculate World Position (Isometric)
-  // This matches the isoPoint logic in vsTerrain
   const worldX = (tx - ty) * (TILE_W * 0.5);
-  const worldY = (tx + ty) * (TILE_H * 0.5);
-
-  // 2. Adjust for Elevation
-  // Fetch height from the elevation texture array
+  const worldY = (tx + ty) * (TILE_H * camera.tilt * 0.5);
   const h = elevations[ty * GRID_W + tx] || 0;
-  const elevatedWorldY = worldY - (h * ELEV_STEP);
-
-  // 3. Transform World to Screen
-  // Apply zoom and pan, then offset by half the canvas size (center of screen)
+  const elevatedWorldY = worldY - (h * ELEV_STEP * camera.tilt);
   const screenX = (worldX - camera.panX) * camera.zoom + (canvas.width * 0.5);
   const screenY = (elevatedWorldY - camera.panY) * camera.zoom + (canvas.height * 0.5);
-
   return [screenX, screenY];
 }
 

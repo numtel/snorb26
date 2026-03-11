@@ -30,13 +30,17 @@ export const camera = {
   panX: 0,
   panY: (256 + 256) * (32 * 0.25),
   zoom: 1.0,
+  tilt: 1.0,
   // New target values for interpolation
   targetPanX: 0,
   targetPanY: (256 + 256) * (32 * 0.25),
   targetZoom: 1.0,
+  targetTilt: 1.0,
 
   minZoom: 0.1,
   maxZoom: 5.0,
+  minTilt: 0.35,
+  maxTilt: 2.0,
   lerpFactor: 0.15 // Adjust this for "slipperiness" (0.1 = slow, 0.3 = fast)
 };
 export const selected = { has: false, x: 0, y: 0, id: 0 };
@@ -70,11 +74,9 @@ export function tileCenterWorld(tx, ty) {
   // Use the same math as the vertex shader for consistency
   const wx = (tx - ty) * (TILE_W * 0.5);
   // We add 0.5 to tx and ty to get the center of the tile, not the top corner
-  const wy = (tx + ty + 1.0) * (TILE_H * 0.5);
-
+  const wy = (tx + ty + 1.0) * (TILE_H * camera.tilt * 0.5);
   const h = elevations[ty * GRID_W + tx] || 0;
-  // Subtract height because higher elevation moves the tile "up" (negative Y)
- return [wx, wy - (h * ELEV_STEP)];
+  return [wx, wy - (h * ELEV_STEP * camera.tilt)];
 }
 
 // --- 1. Core Serialization ---
@@ -89,7 +91,8 @@ export function serializeMap() {
     camera: {
       panX: camera.targetPanX,
       panY: camera.targetPanY,
-      zoom: camera.targetZoom
+      zoom: camera.targetZoom,
+      tilt: camera.targetTilt
     },
     brush,
     rotation: appState.rotation
@@ -114,6 +117,12 @@ export function deserializeMap(data) {
       camera.panX = camera.targetPanX = data.camera.panX;
       camera.panY = camera.targetPanY = data.camera.panY;
       camera.zoom = camera.targetZoom = data.camera.zoom;
+      if (data.camera.tilt !== undefined) {
+        camera.tilt = camera.targetTilt = data.camera.tilt;
+      } else {
+        // Use default value
+        camera.tilt = camera.targetTilt = 1.0;
+      }
     }
 
     if (data.rotation !== undefined) appState.rotation = data.rotation;
