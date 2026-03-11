@@ -37,30 +37,120 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// UI Elements
-document.addEventListener('click', (e) => {
-  const btn = e.target.closest('button[data-command]');
-  if (!btn) return;
-  switch(btn.attributes.getNamedItem('data-command').value) {
-    case 'reset':
-      if (confirm("Are you sure you want to clear the city? This cannot be undone.")) {
-        // Remove the specific key used for city data
-        localStorage.removeItem('dencity_map_data');
+// --- MENU SYSTEM STATE ---
+let activeMenu = null;
+let dragStartedOnTrigger = false;
 
-        // Reload the page to reset all state and run seedDemo()
+const closeAllMenus = () => {
+  document.querySelectorAll('.menubar .menu').forEach(m => m.close());
+  document.querySelectorAll('.menu-trigger').forEach(b => b.classList.remove('active'));
+  activeMenu = null;
+  dragStartedOnTrigger = false;
+};
+
+const openMenu = (trigger) => {
+  const menu = trigger.parentElement.querySelector('dialog');
+  if (activeMenu === menu) return; // Already open
+
+  closeAllMenus();
+  trigger.classList.add('active');
+  menu.show();
+  activeMenu = menu;
+};
+
+// --- EVENT DELEGATION ---
+const toolsElement = document.getElementById('tools');
+
+toolsElement.addEventListener('pointerdown', (e) => {
+  const trigger = e.target.closest('.menu-trigger');
+  if (trigger) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (activeMenu && activeMenu === trigger.parentElement.querySelector('dialog')) {
+      // If clicking the same button that is already open, close it
+      closeAllMenus();
+    } else {
+      openMenu(trigger);
+      dragStartedOnTrigger = true;
+    }
+  }
+});
+
+toolsElement.addEventListener('pointerover', (e) => {
+  const trigger = e.target.closest('.menu-trigger');
+  // Classic Windows behavior: If one menu is open, hovering over others opens them
+  if (trigger && activeMenu) {
+    openMenu(trigger);
+  }
+});
+
+window.addEventListener('keydown', (e) => {
+  const code = e.code.replace(/(Digit|Key)/, '');
+  const tool = document.querySelector(`button[data-key="${code}"]`);
+  if(tool) {
+    menuClicks(tool.dataset.command, tool.dataset.tool);
+  }
+});
+
+function menuClicks(command, tool) {
+  const moveSpeed =100 / camera.zoom;
+  const zoomStep = 1.1;
+  if(tool) {
+    appState.toolMode = tool;
+    document.querySelectorAll('button[data-tool]').forEach(b =>
+      b.classList.toggle('active', b.dataset.tool === tool)
+    );
+    return;
+  }
+
+  switch(command) {
+    case 'reset':
+      if (confirm("Are you sure you want to clear the city?")) {
+        localStorage.removeItem('dencity_map_data');
         window.location.reload();
       }
       break;
-  };
+    case 'pan-up': camera.targetPanY -= moveSpeed * 0.5; break;
+    case 'pan-down': camera.targetPanY += moveSpeed * 0.5; break;
+    case 'pan-left': camera.targetPanX -= moveSpeed; break;
+    case 'pan-right': camera.targetPanX += moveSpeed; break;
+
+    case 'zoom-in':
+      camera.targetZoom = clamp(camera.targetZoom * zoomStep, camera.minZoom, camera.maxZoom);
+      break;
+    case 'zoom-out':
+      camera.targetZoom = clamp(camera.targetZoom / zoomStep, camera.minZoom, camera.maxZoom);
+      break;
+
+    case 'rotate-left': rotateGrid(camera, false); break;
+    case 'rotate-right': rotateGrid(camera, true); break;
+    default:
+      console.error('invalid menu item', command);
+  }
+}
+
+window.addEventListener('pointerup', (e) => {
+  const item = e.target.closest('.menu button[data-tool], .menu button[data-command]');
+  const isInsideTrigger = e.target.closest('.menu-trigger');
+  const isInsideMenu = e.target.closest('.menu');
+
+  if (item) {
+    // Handle Item Selection
+    menuClicks(item.dataset.command, item.dataset.tool);
+    closeAllMenus();
+  } else if (!isInsideTrigger && !isInsideMenu) {
+    // Clicked outside entirely
+    closeAllMenus();
+  } else if (isInsideTrigger && !dragStartedOnTrigger) {
+    // This handles the "second click" on the top level to close
+    // but only if we didn't just open it via a drag
+  }
+
+  dragStartedOnTrigger = false;
 });
 
-document.getElementById('tools').addEventListener('pointerdown', (e) => {
-  const btn = e.target.closest('button[data-tool]');
-  if (!btn) return;
-  e.preventDefault(); e.stopPropagation();
-  appState.toolMode = btn.dataset.tool;
-  document.querySelectorAll('button[data-tool]').forEach(b => b.classList.toggle('active', b === btn));
-});
+
 document.getElementById('brushSize').addEventListener('input', e => {
   brush.radius = parseInt(e.target.value, 10)
   saveMapToLocal();
@@ -239,44 +329,6 @@ canvas.addEventListener("wheel", (e) => {
 
 requestPick(canvas.width * 0.5, canvas.height * 0.5); // Initial Selection
 
-window.addEventListener('keydown', (e) => {
-  const moveSpeed =100 / camera.zoom;
-  const zoomStep = 1.1;
-
-  const tools = document.querySelectorAll('#tools button');
-
-  if(e.code.match(/Digit\d/)) {
-    const digit = Number(e.code.slice(-1));
-    if(digit <= tools.length) {
-      const newTool = tools[digit - 1];
-      const isCommand = 'command' in newTool.dataset;
-      const isTool = 'tool' in newTool.dataset;
-      newTool.click();
-      if(isTool) {
-        tools.forEach((tool, index) => { 'tool' in tool.dataset && tool.classList.toggle('active', index === digit - 1) });
-        appState.toolMode = newTool.dataset.tool;
-      }
-    }
-  }
-
-  switch(e.code) {
-    case 'KeyW': camera.targetPanY -= moveSpeed * 0.5; break;
-    case 'KeyS': camera.targetPanY += moveSpeed * 0.5; break;
-    case 'KeyA': camera.targetPanX -= moveSpeed; break;
-    case 'KeyD': camera.targetPanX += moveSpeed; break;
-    
-    case 'KeyR': 
-      camera.targetZoom = clamp(camera.targetZoom * zoomStep, camera.minZoom, camera.maxZoom); 
-      break;
-    case 'KeyF': 
-      camera.targetZoom = clamp(camera.targetZoom / zoomStep, camera.minZoom, camera.maxZoom); 
-      break;
-
-    case 'KeyQ': rotateGrid(camera, false); break;
-    case 'KeyE': rotateGrid(camera, true); break;
-  }
-});
-
 function tick(now) {
 const l = camera.lerpFactor;
 
@@ -300,7 +352,7 @@ const l = camera.lerpFactor;
   camera.zoom += (camera.targetZoom - camera.zoom) * l;
 
   draw(now);
-  hud.textContent = `dencity\nzoom: ${Math.round(camera.zoom * 100)}%\ntile: (${selected.x}, ${selected.y})`;
+  hud.textContent = `${appState.toolMode}\nzoom: ${Math.round(camera.zoom * 100)}%\ntile: (${selected.x}, ${selected.y})`;
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);

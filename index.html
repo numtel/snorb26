@@ -4,22 +4,48 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>dencity</title>
+  <link rel="stylesheet" href="memphis.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body tabindex="-1">
   <canvas id="scene"></canvas>
   <div id="hud"></div>
-  <div id="tools">
-    <button data-tool="pan" class="active">Pan</button>
-    <div class="sep"></div>
-    <button data-tool="raise">Raise</button>
-    <button data-tool="lower">Lower</button>
-    <button data-tool="level">Level</button>
-    <button data-tool="build">Build</button>
-    <div class="sep"></div>
-    <label class="ctl">Size <input id="brushSize" type="range" min="1" max="8" step="1" value="2"></label>
-    <button data-command="reset">Reset</button>
-    <label class="ctl">Smooth <input id="brushSmooth" type="range" min="0" max="1" step="0.05" value="0.25"></label>
+  <div id="tools" class="toolbar menubar">
+    <div class="vr"></div>
+    <div class="menu-container">
+      <button class="menu-trigger">File</button>
+      <dialog class="menu">
+        <button data-command="reset">Reset Map</button>
+      </dialog>
+    </div>
+    <div class="menu-container">
+      <button class="menu-trigger">Tool</button>
+      <dialog class="menu">
+        <button data-tool="pan" class="active" data-key="1">Pan</button>
+        <button data-tool="raise" data-key="2">Raise</button>
+        <button data-tool="lower" data-key="3">Lower</button>
+        <button data-tool="level" data-key="4">Level</button>
+        <button data-tool="build" data-key="5">Build</button>
+        <div class="hr"></div>
+        <label class="ctl">Size <input id="brushSize" type="range" min="1" max="8" step="1" value="2"></label>
+        <label class="ctl">Smooth <input id="brushSmooth" type="range" min="0" max="1" step="0.05" value="0.25"></label>
+      </dialog>
+    </div>
+    <div class="menu-container">
+      <button class="menu-trigger">View</button>
+      <dialog class="menu">
+        <button data-command="pan-up" data-key="W">Pan Up</button>
+        <button data-command="pan-down" data-key="S">Pan Down</button>
+        <button data-command="pan-left" data-key="A">Pan Left</button>
+        <button data-command="pan-right" data-key="D">Pan Right</button>
+        <div class="hr"></div>
+        <button data-command="zoom-in" data-key="R">Zoom In</button>
+        <button data-command="zoom-out" data-key="F">Zoom Out</button>
+        <div class="hr"></div>
+        <button data-command="rotate-left" data-key="Q">Rotate Left</button>
+        <button data-command="rotate-right" data-key="E">Rotate Right</button>
+      </dialog>
+    </div>
   </div>
 
   <script type="module" src="main.js"></script>
