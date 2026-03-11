@@ -32,21 +32,49 @@ export function brushApplyDelta(cx, cy, delta) {
   saveMapToLocal();
 }
 
-export function brushSmoothTouched() {
-  if (brush.smooth <= 0 || paintStroke.touched.size === 0) return;
-  const touched = Array.from(paintStroke.touched);
-  const tmp = new Uint8Array(touched.length);
-  for (let k = 0; k < touched.length; k++) {
-    const i = touched[k], x = i % GRID_W, y = (i / GRID_W) | 0;
-    let sum = 0, n = 0;
-    if (x > 0) { sum += elevations[i - 1]; n++; }
-    if (x < GRID_W - 1) { sum += elevations[i + 1]; n++; }
-    if (y > 0) { sum += elevations[i - GRID_W]; n++; }
-    if (y < GRID_H - 1) { sum += elevations[i + GRID_W]; n++; }
-    tmp[k] = clamp(Math.round(elevations[i] * (1.0 - brush.smooth) + ((n > 0 ? sum / n : elevations[i]) * brush.smooth)), 0, 255);
+export function brushSmoothTouched(cx, cy) {
+  const r = Math.max(1, brush.radius | 0);
+  const strength = brush.smooth || 0.25;
+
+  // 1. Identify all tiles in the brush radius
+  const affectedIndices = [];
+  for (let oy = -r; oy <= r; oy++) {
+    for (let ox = -r; ox <= r; ox++) {
+      const x = cx + ox, y = cy + oy;
+      if (x < 0 || y < 0 || x >= GRID_W || y >= GRID_H) continue;
+      if (ox * ox + oy * oy > r * r) continue;
+      affectedIndices.push(y * GRID_W + x);
+    }
   }
-  for (let k = 0; k < touched.length; k++) elevations[touched[k]] = tmp[k];
+
+  // 2. Calculate new smoothed values for these tiles
+  const newValues = new Map();
+  for (const i of affectedIndices) {
+    const x = i % GRID_W, y = (i / GRID_W) | 0;
+    let sum = 0, count = 0;
+
+    // Look at 4-neighbors
+    const neighbors = [[0,1], [0,-1], [1,0], [-1,0]];
+    for (const [nx, ny] of neighbors) {
+      const tx = x + nx, ty = y + ny;
+      if (tx >= 0 && tx < GRID_W && ty >= 0 && ty < GRID_H) {
+        sum += elevations[ty * GRID_W + tx];
+        count++;
+      }
+    }
+
+    const avg = count > 0 ? sum / count : elevations[i];
+    // Blend current elevation with neighbor average based on brush smoothness
+    newValues.set(i, Math.round(elevations[i] * (1 - strength) + (avg * strength)));
+  }
+
+  // 3. Apply changes
+  for (const [idx, val] of newValues) {
+    elevations[idx] = clamp(val, 0, 255);
+  }
+
   uploadElevations();
+  saveMapToLocal();
 }
 
 export function commitLevelSelection() {

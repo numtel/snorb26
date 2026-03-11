@@ -219,6 +219,14 @@ canvas.addEventListener("pointerdown", (e) => {
       paintStroke.delta = appState.toolMode === 'raise' ? +1 : -1;
       brushApplyDelta(selected.x, selected.y, paintStroke.delta);
       paintStroke.lastX = selected.x; paintStroke.lastY = selected.y;
+    } else if (appState.toolMode === 'smooth') {
+      paintStroke.active = true;
+      paintStroke.pointerId = e.pointerId;
+      // We use a delta of 0 or a special flag to signify smoothing
+      paintStroke.delta = 0;
+      brushSmoothTouched(selected.x, selected.y);
+      paintStroke.lastX = selected.x;
+      paintStroke.lastY = selected.y;
     } else if (appState.toolMode === 'level') {
       levelSel.active = true;
       levelSel.pointerId = e.pointerId;
@@ -260,7 +268,11 @@ canvas.addEventListener("pointermove", (e) => {
   if (paintStroke.active && paintStroke.pointerId === e.pointerId) {
     requestPick(sx, sy);
     if (selected.has && (selected.x !== paintStroke.lastX || selected.y !== paintStroke.lastY)) {
-      brushApplyDelta(selected.x, selected.y, paintStroke.delta);
+      if (appState.toolMode === 'smooth') {
+        brushSmoothTouched(selected.x, selected.y);
+      } else {
+        brushApplyDelta(selected.x, selected.y, paintStroke.delta);
+      }
       paintStroke.lastX = selected.x;
       paintStroke.lastY = selected.y;
     }
