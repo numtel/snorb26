@@ -1,3 +1,4 @@
+import { uploadElevations, rebuildBuildingInstances} from './renderer.js';
 export const GRID_W = 256;
 export const GRID_H = 256;
 export const TILE_W = 64;
@@ -74,36 +75,30 @@ export function tileCenterWorld(tx, ty) {
   // Subtract height because higher elevation moves the tile "up" (negative Y)
  return [wx, wy - (h * ELEV_STEP)];
 }
-let saveTimeout = null;
 
-export function saveMapToLocal() {
-  // Clear existing timer to reset the throttle window
-  if (saveTimeout) clearTimeout(saveTimeout);
-
-  // Delay saving by 500ms after the last interaction
-  saveTimeout = setTimeout(() => {
-    const data = {
-      elevations: Array.from(elevations),
-      buildingAt: Array.from(buildingAt),
-      camera: {
-        panX: camera.targetPanX,
-        panY: camera.targetPanY,
-        zoom: camera.targetZoom
-      },
-      brush,
-      rotation: appState.rotation
-    };
-    localStorage.setItem('dencity_map_data', JSON.stringify(data));
-    saveTimeout = null;
-  }, 500);
+// --- 1. Core Serialization ---
+// This turns your live state into a clean JSON-serializable object
+export function serializeMap() {
+  return {
+    version: 1,
+    grid: { w: GRID_W, h: GRID_H },
+    elevations: Array.from(elevations),
+    buildingAt: Array.from(buildingAt),
+    camera: {
+      panX: camera.targetPanX,
+      panY: camera.targetPanY,
+      zoom: camera.targetZoom
+    },
+    brush,
+    rotation: appState.rotation
+  };
 }
 
-export function loadMapFromLocal() {
-  const saved = localStorage.getItem('dencity_map_data');
-  if (!saved) return false;
+// This applies a serialized object back to the live state
+export function deserializeMap(data) {
+  if (!data || !data.elevations) return false;
 
   try {
-    const data = JSON.parse(saved);
     elevations.set(data.elevations);
     buildingAt.set(data.buildingAt);
 
@@ -115,16 +110,87 @@ export function loadMapFromLocal() {
 
     if (data.rotation !== undefined) appState.rotation = data.rotation;
 
-    if(data.brush) {
+    if (data.brush) {
       brush.radius = data.brush.radius;
       brush.smooth = data.brush.smooth;
-
-      document.getElementById('brushSize').value = brush.radius;
-      document.getElementById('brushSmooth').value = brush.smooth;
+      // UI update check
+      const rEl = document.getElementById('brushSize');
+      const sEl = document.getElementById('brushSmooth');
+      if (rEl) rEl.value = brush.radius;
+      if (sEl) sEl.value = brush.smooth;
     }
+    uploadElevations();
+    rebuildBuildingInstances();
     return true;
   } catch (e) {
+    console.error("Failed to parse map data", e);
     return false;
   }
 }
 
+// --- 2. Local Storage Implementation ---
+let saveTimeout = null;
+export function saveMapToLocal() {
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    const data = serializeMap();
+    localStorage.setItem('dencity_map_data', JSON.stringify(data));
+    saveTimeout = null;
+  }, 500);
+}
+
+export function loadMapFromLocal() {
+  const saved = localStorage.getItem('dencity_map_data');
+  if (!saved) return false;
+  return deserializeMap(JSON.parse(saved));
+}
+
+// --- 3. File I/O (Download/Upload) ---
+export function downloadMapFile() {
+  const data = serializeMap();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `map_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Creates an internal file input, triggers the picker,
+ * and processes the file upload.
+ */
+export function uploadMapFile() {
+  return new Promise((resolve, reject) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) {
+        resolve(false);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const json = JSON.parse(event.target.result);
+          const success = deserializeMap(json);
+          saveMapToLocal();
+          resolve(success);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsText(file);
+    };
+
+    // Trigger the OS file picker
+    input.click();
+  });
+}

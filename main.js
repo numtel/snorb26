@@ -1,7 +1,7 @@
 import { clamp, camera, selected, levelSel, paintStroke, brush, appState, screenToWorld, tileCenterWorld, elevations, loadMapFromLocal } from './state.js';
 import { initWebGL, canvas, requestPick, rebuildPickResources, draw, uploadElevations, rebuildBuildingInstances } from './renderer.js';
 import { seedDemo, brushApplyDelta, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, rotateGrid } from './tools.js';
-import { saveMapToLocal } from './state.js';
+import { saveMapToLocal, uploadMapFile, downloadMapFile } from './state.js';
 
 // Setup Map & DOM Elements
 const hud = document.getElementById('hud');
@@ -111,6 +111,8 @@ function menuClicks(command, tool) {
         window.location.reload();
       }
       break;
+    case 'open-file': uploadMapFile(); break;
+    case 'save-file': downloadMapFile(); break;
     case 'pan-up': camera.targetPanY -= moveSpeed * 0.5; break;
     case 'pan-down': camera.targetPanY += moveSpeed * 0.5; break;
     case 'pan-left': camera.targetPanX -= moveSpeed; break;
