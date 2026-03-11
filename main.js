@@ -41,7 +41,6 @@ resize();
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-command]');
   if (!btn) return;
-  console.log(btn);
   switch(btn.attributes.getNamedItem('data-command').value) {
     case 'reset':
       if (confirm("Are you sure you want to clear the city? This cannot be undone.")) {
@@ -245,7 +244,6 @@ window.addEventListener('keydown', (e) => {
   const zoomStep = 1.1;
 
   const tools = document.querySelectorAll('#tools button');
-  console.log(e.code, tools.length);
 
   if(e.code.match(/Digit\d/)) {
     const digit = Number(e.code.slice(-1));

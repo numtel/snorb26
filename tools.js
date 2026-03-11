@@ -83,7 +83,6 @@ export function rotateGrid(camera, clockwise = true) {
   const tx = (camera.panY / halfH + camera.panX / halfW) * 0.5;
   const ty = (camera.panY / halfH - camera.panX / halfW) * 0.5;
   const tileInCenter = getTileInScreenCenter();
-  let fnx, fny;
 
   // 2. Rotate the Data
   for (let y = 0; y < GRID_H; y++) {
@@ -92,9 +91,6 @@ export function rotateGrid(camera, clockwise = true) {
       const nx = clockwise ? (GRID_H - 1) - y : y;
       const ny = clockwise ? x : (GRID_W - 1) - x;
       const newIdx = ny * GRID_W + nx;
-      if(tileInCenter && x === tileInCenter.x && y === tileInCenter.y) {
-        fnx = nx; fny = ny;
-      }
       newElev[newIdx] = elevations[oldIdx];
       newBuild[newIdx] = buildingAt[oldIdx];
     }
@@ -104,26 +100,14 @@ export function rotateGrid(camera, clockwise = true) {
   buildingAt.set(newBuild);
   uploadElevations();
   rebuildBuildingInstances();
-  saveMapToLocal();
 
   // 3. Calculate where the Pivot Tile moved to
   // We use the same coordinate transformation used in the loop above
-  const ntx = !clockwise ? (GRID_H - 1) - ty : ty;
-  const nty = clockwise ? tx : (GRID_W - 1) - tx;
-  const center = getTileInScreenCenter();
-  console.log(tx, ty, ntx, nty, fnx, fny, JSON.stringify(center));
-  if(fnx !== undefined) {
-    setTileInCenter(fnx, fny);
-  }
-  console.log(JSON.stringify(getTileInScreenCenter()));
-// 
-//   // 4. Move camera to the new world position of that tile
-//   camera.targetPanX = (fnx - fny) * halfW;
-//   camera.targetPanY = (fnx + fny) * halfH;
-// 
-//   // Snap current pan to target to prevent a massive frame jump/slide
-//   camera.panX = camera.targetPanX;
-//   camera.panY = camera.targetPanY;
+  const ntx = clockwise ? (GRID_H - 1) - tileInCenter.y : tileInCenter.y;
+  const nty = clockwise ? tileInCenter.x : (GRID_W - 1) - tileInCenter.x;
+  setTileInCenter(ntx, nty);
+
+  saveMapToLocal();
 }
 
 export function getHighlightedTile() {
@@ -145,22 +129,21 @@ export function getHighlightedTile() {
 }
 
 export function getTileInScreenCenter() {
-  const centerX = canvas.width * 0.5;
-  const centerY = canvas.height * 0.5;
+  // Not efficient but tough to do with elevations
+  // TODO binary search for efficiency
+  let closeX, closeY, dist = canvas.width * canvas.height;
+  for(let x = 0; x < GRID_W; x++) {
+    for(let y = 0; y < GRID_H; y++) {
+      const [wx, wy] = tileCenterWorld(x, y);
+      const thisDist  = Math.hypot(wx - camera.panX, wy - camera.panY);
+      if(thisDist < dist) {
+        closeX = x; closeY = y;
+        dist = thisDist;
+      }
+    }
+  }
 
-  // Since requestPick is asynchronous (GPU-based), we return the
-  // current selection if it's already centered, otherwise we
-  // calculate it using the camera's current pan values.
-  const halfW = 64 * 0.5; // TILE_W
-  const halfH = 32 * 0.5; // TILE_H
-
-  // Reverse isometric projection math based on current camera pan
-  const tx = Math.floor((camera.panY / halfH + camera.panX / halfW) * 0.5);
-  const ty = Math.floor((camera.panY / halfH - camera.panX / halfW) * 0.5);
-
-  if (tx < 0 || tx >= GRID_W || ty < 0 || ty >= GRID_W) return null;
-
-  return { x: tx, y: ty };
+  return { x: closeX, y: closeY };
 }
 
 export function setTileScreenPosition(tx, ty, sx, sy) {
@@ -175,8 +158,8 @@ export function setTileScreenPosition(tx, ty, sx, sy) {
   const targetPanY = wy - (sy - canvas.height * 0.5) / camera.zoom;
 
   // 3. Update camera targets to glide to the new position
-  camera.targetPanX = targetPanX;
-  camera.targetPanY = targetPanY;
+  camera.targetPanX = camera.panX = targetPanX;
+  camera.targetPanY = camera.panY = targetPanY;
 
   // 4. Update the selection highlight to this tile immediately
   requestPick(sx, sy);
@@ -202,20 +185,7 @@ export function getTileScreenPos(tx, ty) {
 }
 
 export function setTileInCenter(tx, ty) {
-  console.log('necenter', tx, ty, canvas.width, canvas.height);
   setTileScreenPosition(tx, ty, canvas.width * 0.5, canvas.height * 0.5);
-  // 1. Get the world-space center of the target tile
-//   const [wx, wy] = tileCenterWorld(tx, ty);
-// 
-//   // 2. Set the camera's target pan to this world position.
-//   // Since the camera centers (wx, wy) on the screen by default
-//   // in the renderer's uniform calculation, we simply pan to the world point.
-//   console.log(wx,wy, camera);
-// //   const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-// //   console.log(window.innerHeight * dpr, window.innerWidth * dpr);
-//   // TODO fix where to pan
-//   camera.targetPanX = wx;
-//   camera.targetPanY = wy;
 }
 
 export function setHighlightedTile(x, y) {

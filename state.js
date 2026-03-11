@@ -94,7 +94,6 @@ export function saveMapToLocal() {
       rotation: appState.rotation
     };
     localStorage.setItem('dencity_map_data', JSON.stringify(data));
-    console.log("Map saved to local storage.");
     saveTimeout = null;
   }, 500);
 }
