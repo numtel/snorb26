@@ -168,6 +168,7 @@ document.getElementById('brushSmooth').addEventListener('input', e => {
 // Canvas Events
 const pointers = new Map();
 let dragPrimaryId = null, pinchStartDist = 0, pinchStartZoom = 1, pinchStartPan = [0, 0], pinchAnchorWorld = [0, 0];
+let orbitDragX = 0;
 
 canvas.addEventListener("contextmenu", e => e.preventDefault());
 
@@ -197,6 +198,7 @@ canvas.addEventListener("pointerdown", (e) => {
   camera.velX = 0;
   camera.velY = 0;
   camera.isDragging = true;
+  orbitDragX = 0;
 
   requestPick(sx, sy);
   setTimeout(() => {
@@ -278,6 +280,28 @@ canvas.addEventListener("pointermove", (e) => {
     // Calculate instantaneous velocity for inertia
     velocityX = dx / dt;
     velocityY = dy / dt;
+  }
+
+  // 3. ORBIT (Tilt and Rotate)
+  if (pointers.size === 1 && dragPrimaryId === e.pointerId && appState.toolMode === 'orbit') {
+    const dx = sx - prev.x;
+    const dy = sy - prev.y;
+
+    // A. Vertical Drag -> Smooth Tilt
+    const tiltSpeed = 0.005;
+    camera.targetTilt = clamp(camera.targetTilt - dy * tiltSpeed, camera.minTilt, camera.maxTilt);
+
+    // B. Horizontal Drag -> Discrete 90-degree Rotation
+    orbitDragX += dx;
+    const ROTATE_THRESHOLD = 80; // Pixels required to trigger a turn
+
+    if (orbitDragX > ROTATE_THRESHOLD) {
+      rotateGrid(camera, true); // Turn right
+      orbitDragX -= ROTATE_THRESHOLD; // Keep the remainder for fluid continuous turning
+    } else if (orbitDragX < -ROTATE_THRESHOLD) {
+      rotateGrid(camera, false); // Turn left
+      orbitDragX += ROTATE_THRESHOLD;
+    }
   }
 
   // PINCH ZOOM (Mobile Touch)
