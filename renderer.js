@@ -256,6 +256,7 @@ export function rebuildPickResources() {
 }
 
 export function draw(now) {
+  const parallaxScalar = 0.5 + (0.5 / camera.tilt);
   gl.viewport(0, 0, canvas.width, canvas.height);
   if (pendingPick) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, pickState.fbo);
@@ -270,7 +271,7 @@ export function draw(now) {
     gl.uniform1f(PU.tileW, TILE_W); gl.uniform1f(PU.tileH, TILE_H);
     gl.uniform1f(PU.elevStep, ELEV_STEP); gl.uniform1i(PU.gridW, GRID_W); gl.uniform1i(PU.gridH, GRID_H);
     gl.uniform1f(PU.tileW, TILE_W); gl.uniform1f(PU.tileH, TILE_H * camera.tilt);
-    gl.uniform1f(PU.elevStep, ELEV_STEP * camera.tilt);
+    gl.uniform1f(PU.elevStep, ELEV_STEP * parallaxScalar);
     gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, GRID_W * GRID_H);
 
     gl.readPixels(pendingPick.x, (canvas.height - 1) - pendingPick.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pickPixel);
@@ -291,9 +292,9 @@ export function draw(now) {
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, paletteTex); gl.uniform1i(U.paletteTex, 1);
   gl.uniform2f(U.viewSize, canvas.width, canvas.height); gl.uniform2f(U.pan, camera.panX, camera.panY);
   gl.uniform1f(U.zoom, camera.zoom); gl.uniform1f(U.tileW, TILE_W); gl.uniform1f(U.tileH, TILE_H);
-  gl.uniform1f(U.elevStep, ELEV_STEP); gl.uniform1i(U.gridW, GRID_W); gl.uniform1i(U.gridH, GRID_H);
+  gl.uniform1f(U.elevStep, ELEV_STEP * parallaxScalar); gl.uniform1i(U.gridW, GRID_W); gl.uniform1i(U.gridH, GRID_H);
   gl.uniform1f(U.tileW, TILE_W); gl.uniform1f(U.tileH, TILE_H * camera.tilt);
-  gl.uniform1f(U.elevStep, ELEV_STEP * camera.tilt);
+  gl.uniform1f(U.elevStep, ELEV_STEP * parallaxScalar);
 
   gl.uniform1i(U.hasSelection, selected.has ? 1 : 0); gl.uniform1i(U.selectedId, selected.id);
   
@@ -318,7 +319,7 @@ export function draw(now) {
       gl.uniform1f(BU.zoom, camera.zoom); gl.uniform1f(BU.tileW, TILE_W); gl.uniform1f(BU.tileH, TILE_H * camera.tilt);
       gl.uniform1f(BU.elevStep, ELEV_STEP * camera.tilt); gl.uniform1i(BU.gridW, GRID_W); gl.uniform1i(BU.gridH, GRID_H);
       gl.uniform1f(BU.tileW, TILE_W); gl.uniform1f(BU.tileH, TILE_H * camera.tilt);
-      gl.uniform1f(BU.elevStep, ELEV_STEP * camera.tilt);
+      gl.uniform1f(BU.elevStep, ELEV_STEP * parallaxScalar);
 
       gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(true);
 
@@ -332,7 +333,7 @@ export function draw(now) {
 
           if (type === 0) {
               gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, buildingTex); gl.uniform1i(BU.sheet, 1);
-              gl.uniform2f(BU.spritePx, 32, 64 * camera.tilt); gl.uniform1f(BU.sheetCols, BUILD_SPRITES);
+              gl.uniform2f(BU.spritePx, 32, 64 * parallaxScalar); gl.uniform1f(BU.sheetCols, BUILD_SPRITES);
           } else {
               const urlIndex = type - 1;
               const url = customBuildingRegistry[urlIndex];
@@ -340,7 +341,7 @@ export function draw(now) {
 
               if (customInfo && customInfo.tex) {
                   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, customInfo.tex); gl.uniform1i(BU.sheet, 1);
-                  gl.uniform2f(BU.spritePx, customInfo.width, customInfo.height * camera.tilt); gl.uniform1f(BU.sheetCols, 1.0);
+                  gl.uniform2f(BU.spritePx, customInfo.width, customInfo.height * parallaxScalar); gl.uniform1f(BU.sheetCols, 1.0);
               } else {
                   continue; // Skip rendering if missing
               }
@@ -360,7 +361,7 @@ export function draw(now) {
   gl.uniform1f(WU.elevStep, ELEV_STEP); gl.uniform1i(WU.gridW, GRID_W); gl.uniform1i(WU.gridH, GRID_H);
   gl.uniform1f(WU.waterLevel, mapSettings.waterLevel); gl.uniform1f(WU.alpha, 0.88); gl.uniform1f(WU.time, (now || 0) * 0.001);
   gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H * camera.tilt);
-  gl.uniform1f(WU.elevStep, ELEV_STEP * camera.tilt);
+  gl.uniform1f(WU.elevStep, ELEV_STEP * parallaxScalar);
 
   gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, GRID_W * GRID_H);
