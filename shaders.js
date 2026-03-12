@@ -134,7 +134,7 @@ void main(){
 
   // Depth calculation: lower on screen = closer.
   // We subtract a small constant (0.00085) to ensure buildings sit "on top" of the ground.
-  gl_Position = vec4(clip, 1.0 - (float(a_tile.x + a_tile.y) / float(max(1, u_gridW + u_gridH - 2))) - h * 0.0006 - 0.00085, 1.0);
+  gl_Position = vec4(clip, 1.0 - (float(a_tile.x + a_tile.y) / float(max(1, u_gridW + u_gridH - 2))) - h * 0.0006 + 0.0001, 1.0);
 
   v_uv = a_uv;
   v_spr = a_spr;

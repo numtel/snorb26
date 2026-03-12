@@ -104,10 +104,6 @@
     gl.enableVertexAttribArray(3); gl.vertexAttribDivisor(3, 1);
 
     buildInstanceBuf = gl.createBuffer();
-//     gl.bindBuffer(gl.ARRAY_BUFFER, buildInstanceBuf);
-//     gl.bufferData(gl.ARRAY_BUFFER, 0, gl.DYNAMIC_DRAW);
-//     gl.enableVertexAttribArray(2); gl.vertexAttribIPointer(2, 2, gl.SHORT, 12, 0); gl.vertexAttribDivisor(2, 1);
-//     gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 1, gl.FLOAT, false, 12, 4); gl.vertexAttribDivisor(3, 1);
   }
 
   function setupTextures() {
@@ -312,22 +308,6 @@ export function draw(now) {
   gl.uniform1f(U.outlinePx, 1.25);
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, GRID_W * GRID_H);
 
-  // Water Program
-  gl.useProgram(waterProgram);
-  gl.bindVertexArray(vao);
-  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, elevTex); gl.uniform1i(WU.elevTex, 0);
-  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, paletteTex); gl.uniform1i(WU.paletteTex, 1);
-  gl.uniform2f(WU.viewSize, canvas.width, canvas.height); gl.uniform2f(WU.pan, camera.panX, camera.panY);
-  gl.uniform1f(WU.zoom, camera.zoom); gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H);
-  gl.uniform1f(WU.elevStep, ELEV_STEP); gl.uniform1i(WU.gridW, GRID_W); gl.uniform1i(WU.gridH, GRID_H);
-  gl.uniform1f(WU.waterLevel, mapSettings.waterLevel); gl.uniform1f(WU.alpha, 0.88); gl.uniform1f(WU.time, (now || 0) * 0.001);
-  gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H * camera.tilt);
-  gl.uniform1f(WU.elevStep, ELEV_STEP * camera.tilt);
-
-  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
-  gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, GRID_W * GRID_H);
-  gl.depthMask(true); gl.disable(gl.BLEND);
-
   // Buildings (If applicable)
   if (buildBuffers.size > 0) {
       gl.useProgram(buildProgram);
@@ -369,4 +349,21 @@ export function draw(now) {
       }
       gl.depthMask(true); gl.disable(gl.BLEND);
   }
+
+  // Water Program
+  gl.useProgram(waterProgram);
+  gl.bindVertexArray(vao);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, elevTex); gl.uniform1i(WU.elevTex, 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, paletteTex); gl.uniform1i(WU.paletteTex, 1);
+  gl.uniform2f(WU.viewSize, canvas.width, canvas.height); gl.uniform2f(WU.pan, camera.panX, camera.panY);
+  gl.uniform1f(WU.zoom, camera.zoom); gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H);
+  gl.uniform1f(WU.elevStep, ELEV_STEP); gl.uniform1i(WU.gridW, GRID_W); gl.uniform1i(WU.gridH, GRID_H);
+  gl.uniform1f(WU.waterLevel, mapSettings.waterLevel); gl.uniform1f(WU.alpha, 0.88); gl.uniform1f(WU.time, (now || 0) * 0.001);
+  gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H * camera.tilt);
+  gl.uniform1f(WU.elevStep, ELEV_STEP * camera.tilt);
+
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, GRID_W * GRID_H);
+  gl.depthMask(true); gl.disable(gl.BLEND);
+
 }
