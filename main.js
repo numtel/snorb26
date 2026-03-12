@@ -1,7 +1,7 @@
 import { clamp, camera, selected, levelSel, paintStroke, brush, appState, screenToWorld, tileCenterWorld, elevations, loadMapFromLocal } from './state.js';
 import { initWebGL, canvas, requestPick, rebuildPickResources, draw, uploadElevations, rebuildBuildingInstances } from './renderer.js';
 import { seedDemo, brushApplyDelta, brushForest, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, placeCustomBuildingAtSelected, rotateGrid, removeBuildingAtSelected } from './tools.js';
-import { saveMapToLocal, uploadMapFile, downloadMapFile } from './state.js';
+import { saveMapToLocal, uploadMapFile, downloadMapFile, mapSettings } from './state.js';
 
 // Setup Map & DOM Elements
 const hud = document.getElementById('hud');
@@ -155,6 +155,10 @@ window.addEventListener('pointerup', (e) => {
   dragStartedOnTrigger = false;
 });
 
+document.getElementById('waterLevel').addEventListener('input', e => {
+  mapSettings.waterLevel = parseInt(e.target.value, 10);
+  saveMapToLocal();
+});
 
 document.getElementById('brushSize').addEventListener('input', e => {
   brush.radius = parseInt(e.target.value, 10)

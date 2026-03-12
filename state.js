@@ -4,7 +4,6 @@ export const GRID_H = 256;
 export const TILE_W = 64;
 export const TILE_H = 32;
 export const ELEV_STEP = 6;
-export const WATER_LEVEL = 86;
 export const BUILD_SPRITES = 4;
 
 export const elevations = new Uint8Array(GRID_W * GRID_H);
@@ -25,6 +24,9 @@ export const SC3K_COLOR_STOPS = [
   { t: 255, c:[240/255, 240/255, 242/255] },
 ];
 
+export const mapSettings = {
+  waterLevel: 86
+};
 
 export const camera = {
   panX: 0,
@@ -95,7 +97,8 @@ export function serializeMap() {
       tilt: camera.targetTilt
     },
     brush,
-    rotation: appState.rotation
+    rotation: appState.rotation,
+    waterLevel: mapSettings.waterLevel,
   };
 }
 
@@ -125,6 +128,9 @@ export function deserializeMap(data) {
       }
     }
 
+    mapSettings.waterLevel = data.waterLevel || 86;
+    const wEl = document.getElementById('waterLevel');
+    if (wEl) wEl.value = mapSettings.waterLevel;
     if (data.rotation !== undefined) appState.rotation = data.rotation;
 
     if (data.brush) {

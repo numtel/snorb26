@@ -1,4 +1,4 @@
-  import { GRID_W, GRID_H, TILE_W, TILE_H, ELEV_STEP, WATER_LEVEL, BUILD_SPRITES, elevations, SC3K_COLOR_STOPS, buildingAt, camera, selected, levelSel, customBuildingRegistry } from './state.js';
+  import { GRID_W, GRID_H, TILE_W, TILE_H, ELEV_STEP, BUILD_SPRITES, elevations, SC3K_COLOR_STOPS, buildingAt, camera, selected, levelSel, customBuildingRegistry, mapSettings } from './state.js';
   import * as shaders from './shaders.js';
 
   export let gl, canvas;
@@ -320,7 +320,7 @@ export function draw(now) {
   gl.uniform2f(WU.viewSize, canvas.width, canvas.height); gl.uniform2f(WU.pan, camera.panX, camera.panY);
   gl.uniform1f(WU.zoom, camera.zoom); gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H);
   gl.uniform1f(WU.elevStep, ELEV_STEP); gl.uniform1i(WU.gridW, GRID_W); gl.uniform1i(WU.gridH, GRID_H);
-  gl.uniform1f(WU.waterLevel, WATER_LEVEL); gl.uniform1f(WU.alpha, 0.88); gl.uniform1f(WU.time, (now || 0) * 0.001);
+  gl.uniform1f(WU.waterLevel, mapSettings.waterLevel); gl.uniform1f(WU.alpha, 0.88); gl.uniform1f(WU.time, (now || 0) * 0.001);
   gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H * camera.tilt);
   gl.uniform1f(WU.elevStep, ELEV_STEP * camera.tilt);
 
