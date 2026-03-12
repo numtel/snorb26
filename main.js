@@ -217,18 +217,18 @@ canvas.addEventListener("pointerdown", (e) => {
       paintStroke.lastX = selected.x;
       paintStroke.lastY = selected.y;
     } else if (appState.toolMode === 'custom-build') {
-      const url = document.getElementById('customUrl').value.trim();
-      if (url) {
-        placeCustomBuildingAtSelected(url);
+      const rawInput = document.getElementById('customUrl').value;
+      if (rawInput.trim()) {
+        placeCustomBuildingAtSelected(rawInput);
       } else {
-        alert("Please enter a custom HTTPS URL for the building sprite.");
+        alert("Please enter one or more custom HTTPS URLs (comma separated).");
       }
     } else if (appState.toolMode === 'forest') {
       paintStroke.active = true;
       paintStroke.pointerId = e.pointerId;
-      const url = document.getElementById('customUrl').value.trim();
-      if (url) {
-        brushForest(selected.x, selected.y, url);
+      const rawInput = document.getElementById('customUrl').value;
+      if (rawInput.trim()) {
+        brushForest(selected.x, selected.y, rawInput);
         paintStroke.lastX = selected.x;
         paintStroke.lastY = selected.y;
       }

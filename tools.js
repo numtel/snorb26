@@ -223,18 +223,23 @@ export function setHighlightedTile(x, y) {
   requestPick(sx, sy);
 }
 
-export function placeCustomBuildingAtSelected(url) {
+export function placeCustomBuildingAtSelected(input) {
   if (!selected.has) return;
 
-  // Add the URL to the registry if it doesn't exist yet
+  // Split input by commas and pick one random URL
+  const urls = input.split(',').map(u => u.trim()).filter(u => u.length > 0);
+  if (urls.length === 0) return;
+
+  const url = urls[Math.floor(Math.random() * urls.length)];
+
+  // Add the specific URL to the registry if it doesn't exist yet
   let idx = customBuildingRegistry.indexOf(url);
   if (idx === -1) {
     customBuildingRegistry.push(url);
     idx = customBuildingRegistry.length - 1;
-    loadCustomTexture(url); // Trigger fetch
+    loadCustomTexture(url);
   }
 
-  // Base buildings use 1-4. Custom starts at index 5.
   buildingAt[selected.id] = BUILD_SPRITES + 1 + idx;
   rebuildBuildingInstances();
   saveMapToLocal();
@@ -256,30 +261,33 @@ export function removeBuildingAtSelected(cx, cy) {
   saveMapToLocal(); // Persist changes
 }
 
-export function brushForest(cx, cy, url) {
+export function brushForest(cx, cy, input) {
   const r = Math.max(1, brush.radius | 0);
-  const density = brush.smooth || 0.25; // Using smooth slider as density (0.0 to 1.0)
+  const density = brush.smooth || 0.25;
 
-  // Ensure the custom texture is loaded
-  let idx = customBuildingRegistry.indexOf(url);
-  if (idx === -1) {
-    customBuildingRegistry.push(url);
-    idx = customBuildingRegistry.length - 1;
-    loadCustomTexture(url);
-  }
-  const buildingId = BUILD_SPRITES + 1 + idx;
+  // Parse URLs once before the loop for efficiency
+  const urls = input.split(',').map(u => u.trim()).filter(u => u.length > 0);
+  if (urls.length === 0) return;
 
   for (let oy = -r; oy <= r; oy++) {
     for (let ox = -r; ox <= r; ox++) {
       const x = cx + ox, y = cy + oy;
 
-      // Bounds and Radius check
       if (x < 0 || y < 0 || x >= GRID_W || y >= GRID_H) continue;
       if (ox * ox + oy * oy > r * r) continue;
 
-      // Probability check based on density slider
       if (Math.random() < density) {
-        buildingAt[y * GRID_W + x] = buildingId;
+        // Randomly pick a URL for this specific tile
+        const url = urls[Math.floor(Math.random() * urls.length)];
+
+        let idx = customBuildingRegistry.indexOf(url);
+        if (idx === -1) {
+          customBuildingRegistry.push(url);
+          idx = customBuildingRegistry.length - 1;
+          loadCustomTexture(url);
+        }
+
+        buildingAt[y * GRID_W + x] = BUILD_SPRITES + 1 + idx;
       }
     }
   }
