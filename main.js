@@ -87,6 +87,10 @@ toolsElement.addEventListener('pointerover', (e) => {
 
 window.addEventListener('keydown', (e) => {
   const code = e.code.replace(/(Digit|Key)/, '');
+  if(code === 'Escape') {
+    closeAllMenus();
+    return;
+  }
   const tool = document.querySelector(`button[data-key="${code}"]`);
   if(tool) {
     menuClicks(tool.dataset.command, tool.dataset.tool);
