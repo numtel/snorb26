@@ -1,7 +1,7 @@
 import { clamp, camera, selected, levelSel, paintStroke, brush, appState, screenToWorld, tileCenterWorld, elevations, loadMapFromLocal } from './state.js';
 import { initWebGL, canvas, requestPick, rebuildPickResources, draw, uploadElevations, updatePaletteTexture, rebuildBuildingInstances } from './renderer.js';
-import { seedDemo, brushApplyDelta, brushForest, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, placeCustomBuildingAtSelected, rotateGrid, removeBuildingAtSelected } from './tools.js';
-import { saveMapToLocal, uploadMapFile, downloadMapFile, mapSettings } from './state.js';
+import { seedDemo, brushApplyDelta, brushForest, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, placeCustomBuildingAtSelected, rotateGrid, removeBuildingAtSelected, setTileInCenter } from './tools.js';
+import { GRID_W, GRID_H, saveMapToLocal, uploadMapFile, downloadMapFile, mapSettings } from './state.js';
 
 // Setup Map & DOM Elements
 const hud = document.getElementById('hud');
@@ -121,6 +121,7 @@ function menuClicks(command, tool) {
     case 'pan-down': camera.targetPanY += moveSpeed * 0.5; break;
     case 'pan-left': camera.targetPanX -= moveSpeed; break;
     case 'pan-right': camera.targetPanX += moveSpeed; break;
+    case 'center-view': setTileInCenter(GRID_W/2, GRID_H/2); break;
 
     case 'zoom-in':
       camera.targetZoom = clamp(camera.targetZoom * zoomStep, camera.minZoom, camera.maxZoom);
