@@ -95,16 +95,49 @@ void main(){
 
 export const vsBuild = `#version 300 es
 precision highp float; precision highp int;
-layout(location=0) in vec2 a_pos; layout(location=1) in vec2 a_uv; layout(location=2) in ivec2 a_tile; layout(location=3) in float a_spr;
-uniform vec2 u_viewSize; uniform vec2 u_pan; uniform float u_zoom; uniform float u_tileW; uniform float u_tileH; uniform float u_elevStep;
-uniform int u_gridW; uniform int u_gridH; uniform highp usampler2D u_elevTex; uniform vec2 u_spritePx;
+layout(location=0) in vec2 a_pos;
+layout(location=1) in vec2 a_uv;
+layout(location=2) in ivec2 a_tile;
+layout(location=3) in float a_spr;
+
+uniform vec2 u_viewSize; uniform vec2 u_pan; uniform float u_zoom;
+uniform float u_tileW; uniform float u_tileH; uniform float u_elevStep;
+uniform int u_gridW; uniform int u_gridH;
+uniform highp usampler2D u_elevTex; uniform vec2 u_spritePx;
+
 out vec2 v_uv; out float v_spr;
+
 void main(){
+  // Fetch elevation at the tile center
   float h = float(texelFetch(u_elevTex, ivec2(clamp(a_tile.x, 0, u_gridW - 1), clamp(a_tile.y, 0, u_gridH - 1)), 0).r);
-  vec2 base = vec2((float(a_tile.x) - float(a_tile.y)) * (u_tileW * 0.5), (float(a_tile.x) + float(a_tile.y) + 1.0) * (u_tileH * 0.5));
-  vec2 clip = ((((base + vec2(0, -h * u_elevStep) + vec2(a_pos.x * u_spritePx.x, -a_pos.y * u_spritePx.y)) - u_pan) * u_zoom + (u_viewSize * 0.5)) / u_viewSize) * 2.0 - 1.0; clip.y *= -1.0;
+
+  // Isometric base position (anchored at the bottom center of the tile)
+  vec2 base = vec2(
+    (float(a_tile.x) - float(a_tile.y)) * (u_tileW * 0.5),
+    (float(a_tile.x) + float(a_tile.y) + 1.0) * (u_tileH * 0.5)
+  );
+
+  // Calculate local vertex offset.
+  // a_pos.x is -0.5 to 0.5, a_pos.y is 0.0 to 1.0 (bottom to top)
+  vec2 localOffset = vec2(
+    a_pos.x * u_spritePx.x,
+    -a_pos.y * u_spritePx.y
+  );
+
+  // Adjust Y base position by elevation
+  float elevOffset = -h * u_elevStep;
+
+  vec2 world = base + vec2(0.0, elevOffset) + localOffset;
+
+  vec2 clip = (((world - u_pan) * u_zoom + (u_viewSize * 0.5)) / u_viewSize) * 2.0 - 1.0;
+  clip.y *= -1.0;
+
+  // Depth calculation: lower on screen = closer.
+  // We subtract a small constant (0.00085) to ensure buildings sit "on top" of the ground.
   gl_Position = vec4(clip, 1.0 - (float(a_tile.x + a_tile.y) / float(max(1, u_gridW + u_gridH - 2))) - h * 0.0006 - 0.00085, 1.0);
-  v_uv = a_uv; v_spr = a_spr;
+
+  v_uv = a_uv;
+  v_spr = a_spr;
 }`;
 export const fsBuild = `#version 300 es
 precision highp float; in vec2 v_uv; in float v_spr; uniform sampler2D u_sheet; uniform float u_sheetCols; out vec4 fragColor;

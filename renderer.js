@@ -335,8 +335,8 @@ export function draw(now) {
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, elevTex); gl.uniform1i(BU.elevTex, 0);
 
       gl.uniform2f(BU.viewSize, canvas.width, canvas.height); gl.uniform2f(BU.pan, camera.panX, camera.panY);
-      gl.uniform1f(BU.zoom, camera.zoom); gl.uniform1f(BU.tileW, TILE_W); gl.uniform1f(BU.tileH, TILE_H);
-      gl.uniform1f(BU.elevStep, ELEV_STEP); gl.uniform1i(BU.gridW, GRID_W); gl.uniform1i(BU.gridH, GRID_H);
+      gl.uniform1f(BU.zoom, camera.zoom); gl.uniform1f(BU.tileW, TILE_W); gl.uniform1f(BU.tileH, TILE_H * camera.tilt);
+      gl.uniform1f(BU.elevStep, ELEV_STEP * camera.tilt); gl.uniform1i(BU.gridW, GRID_W); gl.uniform1i(BU.gridH, GRID_H);
       gl.uniform1f(BU.tileW, TILE_W); gl.uniform1f(BU.tileH, TILE_H * camera.tilt);
       gl.uniform1f(BU.elevStep, ELEV_STEP * camera.tilt);
 
@@ -352,7 +352,7 @@ export function draw(now) {
 
           if (type === 0) {
               gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, buildingTex); gl.uniform1i(BU.sheet, 1);
-              gl.uniform2f(BU.spritePx, 32, 64); gl.uniform1f(BU.sheetCols, BUILD_SPRITES);
+              gl.uniform2f(BU.spritePx, 32, 64 * camera.tilt); gl.uniform1f(BU.sheetCols, BUILD_SPRITES);
           } else {
               const urlIndex = type - 1;
               const url = customBuildingRegistry[urlIndex];
@@ -360,7 +360,7 @@ export function draw(now) {
 
               if (customInfo && customInfo.tex) {
                   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, customInfo.tex); gl.uniform1i(BU.sheet, 1);
-                  gl.uniform2f(BU.spritePx, customInfo.width, customInfo.height); gl.uniform1f(BU.sheetCols, 1.0);
+                  gl.uniform2f(BU.spritePx, customInfo.width, customInfo.height * camera.tilt); gl.uniform1f(BU.sheetCols, 1.0);
               } else {
                   continue; // Skip rendering if missing
               }
