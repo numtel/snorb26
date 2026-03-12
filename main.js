@@ -133,10 +133,21 @@ function menuClicks(command, tool) {
     case 'rotate-right': rotateGrid(camera, true); break;
     case 'tilt-up': camera.targetTilt = clamp(camera.targetTilt * 1.05, camera.minTilt, camera.maxTilt); break;
     case 'tilt-down': camera.targetTilt = clamp(camera.targetTilt / 1.05, camera.minTilt, camera.maxTilt); break;
+    case 'toggle-grid':
+      appState.showGrid = !appState.showGrid;
+      updateViewMenuUI();
+      break;
     default:
       console.error('invalid menu item', command);
   }
   saveMapToLocal();
+}
+
+export function updateViewMenuUI() {
+  const gridBtn = document.querySelector('button[data-command="toggle-grid"]');
+  if (gridBtn) {
+    gridBtn.classList.toggle('active', appState.showGrid);
+  }
 }
 
 window.addEventListener('pointerup', (e) => {

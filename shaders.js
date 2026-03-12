@@ -38,6 +38,7 @@ precision highp float; precision highp int;
 in float v_height01; in vec2 v_uv; flat in int v_tileId; flat in ivec2 v_t;
 uniform sampler2D u_paletteTex; uniform int u_selectedId; uniform int u_hasSelection;
 uniform int u_levelActive; uniform ivec2 u_levelMin; uniform ivec2 u_levelMax; uniform float u_outlinePx;
+uniform int u_showGrid;
 out vec4 fragColor;
 void main(){
   vec4 base = texture(u_paletteTex, vec2(clamp(v_height01, 0.0, 1.0), 0.5));
@@ -45,7 +46,10 @@ void main(){
   if(u_levelActive == 1 && v_t.x >= u_levelMin.x && v_t.x <= u_levelMax.x && v_t.y >= u_levelMin.y && v_t.y <= u_levelMax.y)
     base.rgb = mix(base.rgb, vec3(0.35, 0.85, 1.0), 0.22);
   float d = min(min(v_uv.x, 1.0 - v_uv.x), min(v_uv.y, 1.0 - v_uv.y));
-  fragColor = vec4(mix(vec3(0.08), base.rgb, smoothstep(0.0, u_outlinePx * max(fwidth(v_uv.x), fwidth(v_uv.y)), d)), 1.0);
+  // Logic: if u_showGrid is 0, we force the smoothstep to 1.0 (no outline)
+  float gridLine = (u_showGrid == 1) ? smoothstep(0.0, u_outlinePx * max(fwidth(v_uv.x), fwidth(v_uv.y)), d) : 1.0;
+
+  fragColor = vec4(mix(vec3(0.08), base.rgb, gridLine), 1.0);
 }`;
 
 export const vsWater = `#version 300 es

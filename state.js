@@ -1,4 +1,5 @@
 import { uploadElevations, rebuildBuildingInstances, loadCustomTexture, updatePaletteTexture} from './renderer.js';
+import { updateViewMenuUI } from './main.js';
 export const GRID_W = 256;
 export const GRID_H = 256;
 export const TILE_W = 64;
@@ -60,7 +61,8 @@ export const paintStroke = {
 export const brush = { radius: 2, smooth: 0.25 };
 export const appState = {
   toolMode: 'pan',
-  rotation: 0 // 0: 0°, 1: 90°, 2: 180°, 3: 270°
+  rotation: 0, // 0: 0°, 1: 90°, 2: 180°, 3: 270°
+  showGrid: true,
 };
 
 // Helpers
@@ -98,6 +100,7 @@ export function serializeMap() {
     },
     brush,
     rotation: appState.rotation,
+    showGrid: appState.showGrid,
     waterLevel: mapSettings.waterLevel,
   };
 }
@@ -134,6 +137,11 @@ export function deserializeMap(data) {
     updatePaletteTexture();
 
     if (data.rotation !== undefined) appState.rotation = data.rotation;
+
+    if (data.showGrid !== undefined) appState.showGrid = data.showGrid;
+    else appState.showGrid = true;
+
+    updateViewMenuUI();
 
     if (data.brush) {
       brush.radius = data.brush.radius;

@@ -1,4 +1,4 @@
-  import { GRID_W, GRID_H, TILE_W, TILE_H, ELEV_STEP, BUILD_SPRITES, elevations, SC3K_COLOR_STOPS, buildingAt, camera, selected, levelSel, customBuildingRegistry, mapSettings } from './state.js';
+  import { GRID_W, GRID_H, TILE_W, TILE_H, ELEV_STEP, BUILD_SPRITES, elevations, SC3K_COLOR_STOPS, buildingAt, camera, selected, appState, levelSel, customBuildingRegistry, mapSettings } from './state.js';
   import * as shaders from './shaders.js';
 
   export let gl, canvas;
@@ -338,6 +338,7 @@ export function draw(now) {
   }
   
   gl.uniform1f(U.outlinePx, 1.25);
+  gl.uniform1i(gl.getUniformLocation(program, "u_showGrid"), appState.showGrid ? 1 : 0);
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, GRID_W * GRID_H);
 
   // Buildings (If applicable)
