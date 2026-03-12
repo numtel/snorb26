@@ -1,6 +1,6 @@
 import { clamp, camera, selected, levelSel, paintStroke, brush, appState, screenToWorld, tileCenterWorld, elevations, loadMapFromLocal } from './state.js';
 import { initWebGL, canvas, requestPick, rebuildPickResources, draw, uploadElevations, rebuildBuildingInstances } from './renderer.js';
-import { seedDemo, brushApplyDelta, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, placeCustomBuildingAtSelected, rotateGrid } from './tools.js';
+import { seedDemo, brushApplyDelta, brushForest, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, placeCustomBuildingAtSelected, rotateGrid, removeBuildingAtSelected } from './tools.js';
 import { saveMapToLocal, uploadMapFile, downloadMapFile } from './state.js';
 
 // Setup Map & DOM Elements
@@ -206,12 +206,27 @@ canvas.addEventListener("pointerdown", (e) => {
 
     if (appState.toolMode === 'build') {
       placeBuildingAtSelected();
+    } else if (appState.toolMode === 'demolish') {
+      paintStroke.active = true;
+      paintStroke.pointerId = e.pointerId;
+      removeBuildingAtSelected(selected.x, selected.y);
+      paintStroke.lastX = selected.x;
+      paintStroke.lastY = selected.y;
     } else if (appState.toolMode === 'custom-build') {
       const url = document.getElementById('customUrl').value.trim();
       if (url) {
         placeCustomBuildingAtSelected(url);
       } else {
         alert("Please enter a custom HTTPS URL for the building sprite.");
+      }
+    } else if (appState.toolMode === 'forest') {
+      paintStroke.active = true;
+      paintStroke.pointerId = e.pointerId;
+      const url = document.getElementById('customUrl').value.trim();
+      if (url) {
+        brushForest(selected.x, selected.y, url);
+        paintStroke.lastX = selected.x;
+        paintStroke.lastY = selected.y;
       }
     } else if (appState.toolMode === 'raise' || appState.toolMode === 'lower') {
       paintStroke.active = true;
@@ -268,7 +283,12 @@ canvas.addEventListener("pointermove", (e) => {
   if (paintStroke.active && paintStroke.pointerId === e.pointerId) {
     requestPick(sx, sy);
     if (selected.has && (selected.x !== paintStroke.lastX || selected.y !== paintStroke.lastY)) {
-      if (appState.toolMode === 'smooth') {
+      if (appState.toolMode === 'demolish') {
+        removeBuildingAtSelected(selected.x, selected.y);
+      } else if (appState.toolMode === 'forest') {
+        const url = document.getElementById('customUrl').value.trim();
+        brushForest(selected.x, selected.y, url);
+      } else if (appState.toolMode === 'smooth') {
         brushSmoothTouched(selected.x, selected.y);
       } else {
         brushApplyDelta(selected.x, selected.y, paintStroke.delta);

@@ -239,3 +239,51 @@ export function placeCustomBuildingAtSelected(url) {
   rebuildBuildingInstances();
   saveMapToLocal();
 }
+
+export function removeBuildingAtSelected(cx, cy) {
+  const r = Math.max(0, (brush.radius - 1) | 0); // Use brush radius
+  for (let oy = -r; oy <= r; oy++) {
+    for (let ox = -r; ox <= r; ox++) {
+      const x = cx + ox, y = cy + oy;
+      if (x < 0 || y < 0 || x >= GRID_W || y >= GRID_H) continue;
+      if (ox * ox + oy * oy > r * r) continue;
+
+      const idx = y * GRID_W + x;
+      buildingAt[idx] = 0; // Clear building
+    }
+  }
+  rebuildBuildingInstances(); // Update GPU
+  saveMapToLocal(); // Persist changes
+}
+
+export function brushForest(cx, cy, url) {
+  const r = Math.max(1, brush.radius | 0);
+  const density = brush.smooth || 0.25; // Using smooth slider as density (0.0 to 1.0)
+
+  // Ensure the custom texture is loaded
+  let idx = customBuildingRegistry.indexOf(url);
+  if (idx === -1) {
+    customBuildingRegistry.push(url);
+    idx = customBuildingRegistry.length - 1;
+    loadCustomTexture(url);
+  }
+  const buildingId = BUILD_SPRITES + 1 + idx;
+
+  for (let oy = -r; oy <= r; oy++) {
+    for (let ox = -r; ox <= r; ox++) {
+      const x = cx + ox, y = cy + oy;
+
+      // Bounds and Radius check
+      if (x < 0 || y < 0 || x >= GRID_W || y >= GRID_H) continue;
+      if (ox * ox + oy * oy > r * r) continue;
+
+      // Probability check based on density slider
+      if (Math.random() < density) {
+        buildingAt[y * GRID_W + x] = buildingId;
+      }
+    }
+  }
+
+  rebuildBuildingInstances();
+  saveMapToLocal();
+}
