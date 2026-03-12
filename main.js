@@ -1,5 +1,5 @@
 import { clamp, camera, selected, levelSel, paintStroke, brush, appState, screenToWorld, tileCenterWorld, elevations, loadMapFromLocal } from './state.js';
-import { initWebGL, canvas, requestPick, rebuildPickResources, draw, uploadElevations, rebuildBuildingInstances } from './renderer.js';
+import { initWebGL, canvas, requestPick, rebuildPickResources, draw, uploadElevations, updatePaletteTexture, rebuildBuildingInstances } from './renderer.js';
 import { seedDemo, brushApplyDelta, brushForest, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, placeCustomBuildingAtSelected, rotateGrid, removeBuildingAtSelected } from './tools.js';
 import { saveMapToLocal, uploadMapFile, downloadMapFile, mapSettings } from './state.js';
 
@@ -157,6 +157,7 @@ window.addEventListener('pointerup', (e) => {
 
 document.getElementById('waterLevel').addEventListener('input', e => {
   mapSettings.waterLevel = parseInt(e.target.value, 10);
+  updatePaletteTexture();
   saveMapToLocal();
 });
 

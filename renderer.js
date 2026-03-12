@@ -38,6 +38,49 @@
     customTextures.set(url, { tex, width: 32, height: 64 });
   }
 
+  export function updatePaletteTexture() {
+    const palData = new Uint8Array(256 * 4);
+    const waterLevel = mapSettings.waterLevel;
+    const originalPivot = 86; // The original T value for the 5th stop
+
+    // 1. Create a dynamic version of the stops based on current water level
+    const dynamicStops = SC3K_COLOR_STOPS.map((stop, i) => {
+      let newT = stop.t;
+      if (stop.t <= originalPivot) {
+        // Scale underwater stops: map [0, 86] to [0, waterLevel]
+        newT = (stop.t / originalPivot) * waterLevel;
+      } else {
+        // Scale above-water stops: map [86, 255] to [waterLevel, 255]
+        newT = waterLevel + ((stop.t - originalPivot) / (255 - originalPivot)) * (255 - waterLevel);
+      }
+      return { t: newT, c: stop.c };
+    });
+
+    // 2. Fill the palette data using the dynamic stops
+    for (let i = 0; i < 256; i++) {
+      let a = dynamicStops[0], b = dynamicStops[dynamicStops.length - 1];
+
+      for (let s = 0; s < dynamicStops.length - 1; s++) {
+        if (i >= dynamicStops[s].t && i <= dynamicStops[s + 1].t) {
+          a = dynamicStops[s];
+          b = dynamicStops[s + 1];
+          break;
+        }
+      }
+
+      const range = b.t - a.t;
+      const u = range <= 0 ? 0 : (i - a.t) / range;
+
+      palData[i * 4]     = Math.round((a.c[0] + (b.c[0] - a.c[0]) * u) * 255);
+      palData[i * 4 + 1] = Math.round((a.c[1] + (b.c[1] - a.c[1]) * u) * 255);
+      palData[i * 4 + 2] = Math.round((a.c[2] + (b.c[2] - a.c[2]) * u) * 255);
+      palData[i * 4 + 3] = 255;
+    }
+
+    gl.bindTexture(gl.TEXTURE_2D, paletteTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, palData);
+  }
+
   export function initWebGL(canvasEl) {
     canvas = canvasEl;
     gl = canvas.getContext('webgl2', { antialias: true, alpha: false, depth: true, stencil: false });
@@ -114,22 +157,10 @@
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, GRID_W, GRID_H, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, elevations);
 
     paletteTex = gl.createTexture();
-    const palData = new Uint8Array(256 * 4);
-    for (let i = 0; i < 256; i++) {
-      let a = SC3K_COLOR_STOPS[0], b = SC3K_COLOR_STOPS[SC3K_COLOR_STOPS.length - 1];
-      for (let s = 0; s < SC3K_COLOR_STOPS.length - 1; s++) {
-        if (i >= SC3K_COLOR_STOPS[s].t && i <= SC3K_COLOR_STOPS[s + 1].t) { a = SC3K_COLOR_STOPS[s]; b = SC3K_COLOR_STOPS[s + 1]; break; }
-      }
-      const u = (i - a.t) / Math.max(1, (b.t - a.t));
-      palData[i * 4] = Math.round((a.c[0] + (b.c[0] - a.c[0]) * u) * 255);
-      palData[i * 4 + 1] = Math.round((a.c[1] + (b.c[1] - a.c[1]) * u) * 255);
-      palData[i * 4 + 2] = Math.round((a.c[2] + (b.c[2] - a.c[2]) * u) * 255);
-      palData[i * 4 + 3] = 255;
-    }
     gl.bindTexture(gl.TEXTURE_2D, paletteTex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, palData);
+    updatePaletteTexture();
 
     // Buildings sprite sheet
     const sprW = 32, sprH = 64; // Increased from 40 to 64
@@ -359,7 +390,7 @@ export function draw(now) {
   gl.uniform2f(WU.viewSize, canvas.width, canvas.height); gl.uniform2f(WU.pan, camera.panX, camera.panY);
   gl.uniform1f(WU.zoom, camera.zoom); gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H);
   gl.uniform1f(WU.elevStep, ELEV_STEP); gl.uniform1i(WU.gridW, GRID_W); gl.uniform1i(WU.gridH, GRID_H);
-  gl.uniform1f(WU.waterLevel, mapSettings.waterLevel); gl.uniform1f(WU.alpha, 0.88); gl.uniform1f(WU.time, (now || 0) * 0.001);
+  gl.uniform1f(WU.waterLevel, mapSettings.waterLevel); gl.uniform1f(WU.alpha, 0.48); gl.uniform1f(WU.time, (now || 0) * 0.001);
   gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H * camera.tilt);
   gl.uniform1f(WU.elevStep, ELEV_STEP * parallaxScalar);
 

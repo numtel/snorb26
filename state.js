@@ -1,4 +1,4 @@
-import { uploadElevations, rebuildBuildingInstances, loadCustomTexture} from './renderer.js';
+import { uploadElevations, rebuildBuildingInstances, loadCustomTexture, updatePaletteTexture} from './renderer.js';
 export const GRID_W = 256;
 export const GRID_H = 256;
 export const TILE_W = 64;
@@ -131,6 +131,8 @@ export function deserializeMap(data) {
     mapSettings.waterLevel = data.waterLevel || 86;
     const wEl = document.getElementById('waterLevel');
     if (wEl) wEl.value = mapSettings.waterLevel;
+    updatePaletteTexture();
+
     if (data.rotation !== undefined) appState.rotation = data.rotation;
 
     if (data.brush) {

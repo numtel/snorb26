@@ -86,7 +86,7 @@ out vec4 fragColor;
 float tH(int x, int y){ return float(texelFetch(u_elevTex, ivec2(clamp(x, 0, u_gridW - 1), clamp(y, 0, u_gridH - 1)), 0).r); }
 void main(){
   if(v_tileH >= u_waterLevel) discard;
-  vec3 base = texture(u_paletteTex, vec2(clamp((u_waterLevel - 6.0) / 255.0, 0.0, 1.0), 0.5)).rgb;
+  vec3 base = vec3(120./255., 176./255., 195./255.);
   float shore = step(u_waterLevel, max(max(tH(v_t.x-1, v_t.y), tH(v_t.x+1, v_t.y)), max(tH(v_t.x, v_t.y-1), tH(v_t.x, v_t.y+1))));
   float edge = 1.0 - smoothstep(0.08, 0.22, min(min(v_uv.x, 1.0 - v_uv.x), min(v_uv.y, 1.0 - v_uv.y)));
   float waves = shore * edge * (sin(u_time * 2.2 + (float(v_t.x) * 0.27 + float(v_t.y) * 0.19) + (v_uv.x * 6.0 + v_uv.y * 6.0)) * 0.5 + 0.5);
