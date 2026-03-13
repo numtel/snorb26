@@ -6,6 +6,7 @@ uniform float u_tileW; uniform float u_tileH; uniform float u_elevStep;
 uniform int u_gridW; uniform int u_gridH; uniform float u_rotation;
 uniform highp usampler2D u_elevTex;
 out float v_height01; out vec2 v_uv; flat out int v_tileId; flat out ivec2 v_t;
+out vec3 v_normal;
 
 float tileHeight(int x, int y){ return float(texelFetch(u_elevTex, ivec2(clamp(x, 0, u_gridW - 1), clamp(y, 0, u_gridH - 1)), 0).r); }
 float vertexHeight(int vx, int vy){
@@ -29,6 +30,15 @@ void main(){
   v_tileId = gl_InstanceID; v_t = ivec2(tx, ty); v_uv = a_corner;
   float hV = vertexHeight(tx + int(a_corner.x), ty + int(a_corner.y));
   v_height01 = hV / 255.0;
+
+  // Estimate the normal by looking at neighboring heights
+  float hR = vertexHeight(tx + int(a_corner.x) + 1, ty + int(a_corner.y));
+  float hD = vertexHeight(tx + int(a_corner.x), ty + int(a_corner.y) + 1);
+  // These vectors represent the change in height over the grid distance
+  // We scale the height by u_elevStep to match world-space proportions
+  vec3 dx = vec3(u_tileW, (hR - hV) * u_elevStep, 0.0);
+  vec3 dy = vec3(0.0, (hD - hV) * u_elevStep, u_tileH);
+  v_normal = normalize(cross(dy, dx));
   
   vec3 iso = rotatedIso(float(tx) + a_corner.x, float(ty) + a_corner.y, hV);
   vec2 world = iso.xy;
@@ -41,12 +51,27 @@ void main(){
 export const fsTerrain = `#version 300 es
 precision highp float; precision highp int;
 in float v_height01; in vec2 v_uv; flat in int v_tileId; flat in ivec2 v_t;
+in vec3 v_normal;
 uniform sampler2D u_paletteTex; uniform int u_selectedId; uniform int u_hasSelection;
 uniform int u_levelActive; uniform ivec2 u_levelMin; uniform ivec2 u_levelMax; uniform float u_outlinePx;
 uniform int u_showGrid; uniform float u_zoom;
 out vec4 fragColor;
 void main(){
   vec4 base = texture(u_paletteTex, vec2(clamp(v_height01, 0.0, 1.0), 0.5));
+
+  // Define a light direction (imagined from the top-right/back)
+  // You can adjust these values to change the sun's position
+  vec3 lightDir = normalize(vec3(0.5, 1.0, 0.5));
+
+  // Calculate Diffuse lighting (Lambertian)
+  float diff = dot(v_normal, lightDir);
+
+  // Wrap the lighting slightly so shadows aren't pitch black (Ambient)
+  float shadow = mix(0.6, 1.1, clamp(diff, 0.0, 1.0));
+
+  // Apply shadow to base color
+  base.rgb *= shadow;
+
   float dots = smoothstep(0.2, 0.35, length(fract(v_uv * 8.0) - 0.5));
   float dotStrength = smoothstep(0.4, 1.2, u_zoom);
   float dotDarkness = mix(1.0, 0.92, dotStrength);
