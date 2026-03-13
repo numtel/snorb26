@@ -58,6 +58,53 @@ const openMenu = (trigger) => {
   activeMenu = menu;
 };
 
+// --- DEVICE ORIENTATION CONTROLS ---
+let initialOrientation = null;
+
+function handleOrientation(e) {
+  // Only process if the orbit tool is active
+  if (appState.toolMode !== 'orbit') {
+    initialOrientation = null;
+    return;
+  }
+
+  // Capture starting point to allow relative movement
+  if (!initialOrientation) {
+    initialOrientation = { beta: e.beta, gamma: e.gamma };
+    return;
+  }
+
+  // Beta (Tilt: -180 to 180) -> Maps to Camera Tilt
+  // We use a sensitivity multiplier (0.02)
+  const deltaBeta = (e.beta - initialOrientation.beta) * 0.02;
+  camera.targetTilt = clamp(camera.targetTilt + deltaBeta, camera.minTilt, camera.maxTilt);
+
+  // Gamma (Left/Right: -90 to 90) -> Maps to Camera Rotation
+  const deltaGamma = (e.gamma - initialOrientation.gamma) * 0.03;
+  camera.targetRotation += deltaGamma;
+
+  // Update initial to current to create a smooth "delta" flow
+  initialOrientation = { beta: e.beta, gamma: e.gamma };
+}
+
+// Permission & Listener Setup
+const enableOrientation = () => {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // iOS 13+ Requirement
+    DeviceOrientationEvent.requestPermission()
+      .then(response => {
+        if (response === 'granted') {
+          window.addEventListener('deviceorientation', handleOrientation);
+        }
+      })
+      .catch(console.error);
+  } else {
+    // Android / Non-iOS
+    window.addEventListener('deviceorientation', handleOrientation);
+  }
+};
+
 // --- EVENT DELEGATION ---
 const toolsElement = document.getElementById('tools');
 
@@ -105,6 +152,9 @@ function menuClicks(command, tool) {
     document.querySelectorAll('button[data-tool]').forEach(b =>
       b.classList.toggle('active', b.dataset.tool === tool)
     );
+    if(tool === 'orbit') {
+      enableOrientation();
+    }
     return;
   }
 
