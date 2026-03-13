@@ -1,7 +1,7 @@
 import { clamp, camera, selected, levelSel, paintStroke, brush, appState, screenToWorld, tileCenterWorld, elevations, loadMapFromLocal } from './state.js';
 import { initWebGL, canvas, requestPick, rebuildPickResources, draw, uploadElevations, updatePaletteTexture, rebuildBuildingInstances } from './renderer.js';
 import { seedDemo, brushApplyDelta, brushForest, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, placeCustomBuildingAtSelected, removeBuildingAtSelected, setTileInCenter } from './tools.js';
-import { GRID_W, GRID_H, saveMapToLocal, uploadMapFile, downloadMapFile, mapSettings } from './state.js';
+import { GRID_W, GRID_H, buildingAt, saveMapToLocal, uploadMapFile, downloadMapFile, mapSettings } from './state.js';
 
 // Setup Map & DOM Elements
 const hud = document.getElementById('hud');
@@ -197,8 +197,21 @@ function menuClicks(command, tool) {
   switch(command) {
     case 'reset':
       if (confirm("Are you sure you want to clear the city?")) {
+        // 1. Clear local storage
         localStorage.removeItem('dencity_map_data');
-        window.location.reload();
+
+        // 2. Re-seed the map elevations and clear buildings
+        seedDemo();
+        buildingAt.fill(0);
+
+        // 3. Reset Camera: Center the view and zoom out completely
+        setTileInCenter(GRID_W / 2, GRID_H / 2);
+        camera.targetZoom = camera.minZoom;
+
+        // 4. Update GPU and Save
+        uploadElevations();
+        rebuildBuildingInstances();
+        saveMapToLocal();
       }
       break;
     case 'open-file': uploadMapFile(); break;
