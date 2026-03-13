@@ -37,6 +37,14 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+function syncBrushFromUI() {
+  const rEl = document.getElementById('brushSize');
+  const sEl = document.getElementById('brushSmooth');
+  if (rEl) brush.radius = parseInt(rEl.value, 10);
+  if (sEl) brush.smooth = parseFloat(sEl.value);
+}
+syncBrushFromUI();
+
 // --- MENU SYSTEM STATE ---
 let activeMenu = null;
 let dragStartedOnTrigger = false;
@@ -148,6 +156,7 @@ function menuClicks(command, tool) {
   const moveSpeed =100 / camera.zoom;
   const zoomStep = 1.1;
   if(tool) {
+    syncBrushFromUI();
     appState.toolMode = tool;
     document.querySelectorAll('button[data-tool]').forEach(b =>
       b.classList.toggle('active', b.dataset.tool === tool)
