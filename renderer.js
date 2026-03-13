@@ -2,10 +2,10 @@
   import * as shaders from './shaders.js';
 
   export let gl, canvas;
-  let program, waterProgram, buildProgram, pickProgram;
+  let program, waterProgram, buildProgram, pickProgram, skyProgram;
   let vao, buildVao, buildInstanceBuf;
   let elevTex, paletteTex, buildingTex;
-  let U, WU, BU, PU;
+  let U, WU, BU, PU, SU;
   let buildInstanceCount = 0;
 
   export const buildBuffers = new Map();
@@ -94,11 +94,13 @@
     waterProgram = linkProgram(shaders.vsWater, shaders.fsWater);
     buildProgram = linkProgram(shaders.vsBuild, shaders.fsBuild);
     pickProgram = linkProgram(shaders.vsPick, shaders.fsPick);
+    skyProgram = linkProgram(shaders.vsSky, shaders.fsSky);
 
     U = getUniforms(program, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_selectedId", "u_hasSelection", "u_outlinePx", "u_levelActive", "u_levelMin", "u_levelMax"]);
     WU = getUniforms(waterProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_waterLevel", "u_alpha", "u_time"]);
     BU = getUniforms(buildProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_sheet", "u_spritePx", "u_sheetCols"]);
     PU = getUniforms(pickProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
+    SU = getUniforms(skyProgram, ["u_tilt", "u_rotation", "u_pan"]);
 
     setupGeometry();
     setupTextures();
@@ -318,6 +320,20 @@ export function draw(now) {
   }
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  // DRAW SKYBOX
+  gl.useProgram(skyProgram);
+  gl.bindVertexArray(vao); // Reusing the standard quad VAO
+  gl.depthMask(false);    // Don't write to depth buffer
+
+  gl.uniform1f(SU.tilt, camera.tilt);
+  gl.uniform1f(SU.rotation, camera.rotation);
+  gl.uniform2f(SU.pan, camera.panX, camera.panY);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  gl.depthMask(true);     // Re-enable depth for terrain
+
+  // DRAW TERRAIN
   gl.useProgram(program);
   gl.bindVertexArray(vao);
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, elevTex); gl.uniform1i(U.elevTex, 0);

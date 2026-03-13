@@ -157,3 +157,45 @@ export const vsPick = vsTerrain;
 export const fsPick = `#version 300 es
 precision highp float; precision highp int; flat in int v_tileId; out vec4 fragColor;
 void main(){ int v = v_tileId + 1; fragColor = vec4(mod(float(v), 256.0)/255.0, float((v >> 8) & 255)/255.0, float((v >> 16) & 255)/255.0, 1.0); }`;
+
+export const vsSky = `#version 300 es
+precision highp float;
+layout(location=0) in vec2 a_pos;
+out vec2 v_uv;
+void main() {
+    v_uv = a_pos; // Range [0, 1]
+    gl_Position = vec4(a_pos * 2.0 - 1.0, 0.9999, 1.0); // Render at far plane
+}`;
+
+export const fsSky = `#version 300 es
+precision highp float;
+in vec2 v_uv;
+uniform float u_tilt;
+uniform float u_rotation;
+uniform vec2 u_pan;
+out vec4 fragColor;
+
+void main() {
+    // Adjust horizon based on camera tilt and vertical pan
+    float horizonShift = (u_tilt * 0.5) - (u_pan.y * 0.0005);
+    float v = v_uv.y + horizonShift;
+
+    // Horizontal shift based on rotation to move the "sun"
+    float sunX = fract(u_rotation / 6.2831) - 0.5;
+    float h = v_uv.x + sunX;
+
+    // Sunset Colors
+    vec3 space = vec3(0.10, 0.10, 0.25);  // Deep Indigo
+    vec3 sunset = vec3(1.0, 0.35, 0.1);   // Burning Orange
+    vec3 horizon = vec3(1.0, 0.7, 0.3);   // Golden Glow
+
+    // Create the vertical gradient
+    vec3 color = mix(sunset, space, smoothstep(0.4, 0.9, v));
+    color = mix(horizon, color, smoothstep(0.3, 0.5, v));
+
+    // Add a subtle radial "glow" for the sun location
+    float sunGlow = 1.0 - distance(vec2(h, v), vec2(0.5, 0.4));
+    color += sunset * pow(max(0.0, sunGlow), 4.0) * 0.5;
+
+    fragColor = vec4(color, 1.0);
+}`;
