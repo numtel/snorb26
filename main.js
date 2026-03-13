@@ -48,6 +48,9 @@ syncBrushFromUI();
 // --- MENU SYSTEM STATE ---
 let activeMenu = null;
 let dragStartedOnTrigger = false;
+const activeCommands = new Set();
+// Define which commands should be "held down" for fluid movement
+const continuousCommands = ['pan-up', 'pan-down', 'pan-left', 'pan-right', 'rotate-left', 'rotate-right', 'tilt-up', 'tilt-down', 'zoom-in', 'zoom-out'];
 
 const closeAllMenus = () => {
   document.querySelectorAll('.menubar .menu').forEach(m => m.close());
@@ -141,6 +144,7 @@ toolsElement.addEventListener('pointerover', (e) => {
 });
 
 window.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
   const code = e.code.replace(/(Digit|Key)/, '');
   if(code === 'Escape') {
     closeAllMenus();
@@ -148,7 +152,30 @@ window.addEventListener('keydown', (e) => {
   }
   const tool = document.querySelector(`button[data-key="${code}"]`);
   if(tool) {
-    menuClicks(tool.dataset.command, tool.dataset.tool);
+    const cmd = tool.dataset.command;
+    const toolMode = tool.dataset.tool;
+
+    // 1. Handle Tool Mode switches (e.g., 'B' for build)
+    if (toolMode) {
+      menuClicks(null, toolMode);
+    }
+    // 2. Handle Commands (e.g., 'G' for grid, 'Arrows' for pan)
+    else if (cmd) {
+      if (continuousCommands.includes(cmd)) {
+        activeCommands.add(cmd);
+      } else {
+        // This handles "one-shot" actions like toggle-grid and center-view
+        menuClicks(cmd, null);
+      }
+    }
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  const code = e.code.replace(/(Digit|Key)/, '');
+  const tool = document.querySelector(`button[data-key="${code}"]`);
+  if (tool && tool.dataset.command) {
+    activeCommands.delete(tool.dataset.command);
   }
 });
 
@@ -470,7 +497,26 @@ canvas.addEventListener("wheel", (e) => {
 requestPick(canvas.width * 0.5, canvas.height * 0.5); // Initial Selection
 
 function tick(now) {
-const l = camera.lerpFactor;
+  const l = camera.lerpFactor;
+
+  // Fluid Keyboard Movement Processing
+  if (activeCommands.size > 0) {
+    const moveSpeed = 12 / camera.zoom;
+    const rotateSpeed = 0.04;
+    const tiltFactor = 1.015;
+    const zoomFactor = 1.03;
+
+    if (activeCommands.has('pan-up')) camera.targetPanY -= moveSpeed * 0.5;
+    if (activeCommands.has('pan-down')) camera.targetPanY += moveSpeed * 0.5;
+    if (activeCommands.has('pan-left')) camera.targetPanX -= moveSpeed;
+    if (activeCommands.has('pan-right')) camera.targetPanX += moveSpeed;
+    if (activeCommands.has('rotate-left')) camera.targetRotation -= rotateSpeed;
+    if (activeCommands.has('rotate-right')) camera.targetRotation += rotateSpeed;
+    if (activeCommands.has('tilt-up')) camera.targetTilt = clamp(camera.targetTilt * tiltFactor, camera.minTilt, camera.maxTilt);
+    if (activeCommands.has('tilt-down')) camera.targetTilt = clamp(camera.targetTilt / tiltFactor, camera.minTilt, camera.maxTilt);
+    if (activeCommands.has('zoom-in')) camera.targetZoom = clamp(camera.targetZoom * zoomFactor, camera.minZoom, camera.maxZoom);
+    if (activeCommands.has('zoom-out')) camera.targetZoom = clamp(camera.targetZoom / zoomFactor, camera.minZoom, camera.maxZoom);
+  }
 
   // Apply Inertia if not dragging
   if (pointers.size === 0) {
