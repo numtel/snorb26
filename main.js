@@ -221,6 +221,7 @@ function menuClicks(command, tool) {
     case 'pan-left': camera.targetPanX -= moveSpeed; break;
     case 'pan-right': camera.targetPanX += moveSpeed; break;
     case 'center-view': setTileInCenter(GRID_W/2, GRID_H/2); break;
+    case 'center-selection': setTileInCenter(selected.x, selected.y); break;
 
     case 'zoom-in':
       camera.targetZoom = clamp(camera.targetZoom * zoomStep, camera.minZoom, camera.maxZoom);
@@ -512,6 +513,14 @@ requestPick(canvas.width * 0.5, canvas.height * 0.5); // Initial Selection
 function tick(now) {
   const l = camera.lerpFactor;
 
+  const [worldCenterX, worldCenterY] = screenToWorld(canvas.width / 2, canvas.height / 2, canvas.width, canvas.height);
+  // We need a way to map world back to tile index. Since we have 'selected',
+  // let's use the current selection or the map center as the pivot.
+  const pivotX = selected.has ? selected.x : GRID_W / 2;
+  const pivotY = selected.has ? selected.y : GRID_H / 2;
+  // Capture the world position of our pivot tile BEFORE rotation/tilt changes
+  const [oldWx, oldWy] = tileCenterWorld(pivotX, pivotY);
+
   // Fluid Keyboard Movement Processing
   if (activeCommands.size > 0) {
     const moveSpeed = 12 / camera.zoom;
@@ -553,6 +562,20 @@ function tick(now) {
   camera.zoom += (camera.targetZoom - camera.zoom) * l;
   camera.tilt += (camera.targetTilt - camera.tilt) * l;
   camera.rotation += (camera.targetRotation - camera.rotation) * l;
+
+  // --- STABILIZATION EXECUTION ---
+  // Calculate where that same tile is in the world NOW with the new rotation/tilt
+  const [newWx, newWy] = tileCenterWorld(pivotX, pivotY);
+
+  // The difference between the two is the "drift" caused by the projection math.
+  // We subtract this drift from the target pan to keep the tile stationary on screen.
+  const driftX = newWx - oldWx;
+  const driftY = newWy - oldWy;
+
+  camera.targetPanX += driftX;
+  camera.targetPanY += driftY;
+  camera.panX += driftX;
+  camera.panY += driftY;
 
   // Lock the screen center: If the world just stretched due to tilt,
   // we must proportionally stretch the pan targeting so the camera doesn't wildly slide away.

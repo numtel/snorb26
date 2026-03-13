@@ -75,13 +75,14 @@ export function screenToWorld(sx, sy, canvasWidth, canvasHeight) {
   return [wx, wy];
 }
 
-export function tileCenterWorld(tx, ty) {
+export function tileCenterWorld(tx, ty, rotOverride = null) {
   // Use the same math as the vertex shader for consistency
   // We add 0.5 to tx and ty to get the center of the tile, not the top corner
   const px = (tx + 0.5) - GRID_W * 0.5;
   const py = (ty + 0.5) - GRID_H * 0.5;
-  const c = Math.cos(camera.rotation);
-  const s = Math.sin(camera.rotation);
+  const angle = rotOverride !== null ? rotOverride : camera.rotation;
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
   const rx = px * c - py * s;
   const ry = px * s + py * c;
 
@@ -89,6 +90,16 @@ export function tileCenterWorld(tx, ty) {
   const wy = (rx + ry) * (TILE_H * camera.tilt * 0.5);
   const h = elevations[ty * GRID_W + tx] || 0;
   return [wx, wy - (h * ELEV_STEP * camera.tilt)];
+}
+
+// Convert Screen coordinates to "Anchor" coordinates
+// relative to the center of the world, independent of current pan.
+export function screenToWorldAtRotation(sx, sy, canvasWidth, canvasHeight, rot) {
+  // This is effectively screenToWorld minus the camera.pan addition
+  // but accounting for the rotation transform
+  const x = (sx - canvasWidth * 0.5) / camera.zoom;
+  const y = (sy - canvasHeight * 0.5) / camera.zoom;
+  return [x, y];
 }
 
 // --- 1. Core Serialization ---
