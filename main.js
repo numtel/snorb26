@@ -1,6 +1,6 @@
 import { clamp, camera, selected, levelSel, paintStroke, brush, appState, screenToWorld, tileCenterWorld, elevations, loadMapFromLocal } from './state.js';
 import { initWebGL, canvas, requestPick, rebuildPickResources, draw, uploadElevations, updatePaletteTexture, rebuildBuildingInstances } from './renderer.js';
-import { seedDemo, brushApplyDelta, brushForest, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, placeCustomBuildingAtSelected, rotateGrid, removeBuildingAtSelected, setTileInCenter } from './tools.js';
+import { seedDemo, brushApplyDelta, brushForest, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, placeCustomBuildingAtSelected, removeBuildingAtSelected, setTileInCenter } from './tools.js';
 import { GRID_W, GRID_H, saveMapToLocal, uploadMapFile, downloadMapFile, mapSettings } from './state.js';
 
 // Setup Map & DOM Elements
@@ -16,7 +16,7 @@ uploadElevations();
 
 // Initial Camera 
 camera.panX = 0;
-camera.panY = (256 + 256) * (32 * 0.25);
+camera.panY = 0;
 let lastMoveTime = 0;
 let velocityX = 0;
 let velocityY = 0;
@@ -130,8 +130,8 @@ function menuClicks(command, tool) {
       camera.targetZoom = clamp(camera.targetZoom / zoomStep, camera.minZoom, camera.maxZoom);
       break;
 
-    case 'rotate-left': rotateGrid(camera, false); break;
-    case 'rotate-right': rotateGrid(camera, true); break;
+    case 'rotate-left': camera.targetRotation -= Math.PI / 12; break;
+    case 'rotate-right': camera.targetRotation += Math.PI / 12; break;
     case 'tilt-up': camera.targetTilt = clamp(camera.targetTilt * 1.05, camera.minTilt, camera.maxTilt); break;
     case 'tilt-down': camera.targetTilt = clamp(camera.targetTilt / 1.05, camera.minTilt, camera.maxTilt); break;
     case 'toggle-grid':
@@ -344,17 +344,9 @@ canvas.addEventListener("pointermove", (e) => {
     const tiltSpeed = 0.005;
     camera.targetTilt = clamp(camera.targetTilt - dy * tiltSpeed, camera.minTilt, camera.maxTilt);
 
-    // B. Horizontal Drag -> Discrete 90-degree Rotation
-    orbitDragX += dx;
-    const ROTATE_THRESHOLD = 80; // Pixels required to trigger a turn
-
-    if (orbitDragX > ROTATE_THRESHOLD) {
-      rotateGrid(camera, true); // Turn right
-      orbitDragX -= ROTATE_THRESHOLD; // Keep the remainder for fluid continuous turning
-    } else if (orbitDragX < -ROTATE_THRESHOLD) {
-      rotateGrid(camera, false); // Turn left
-      orbitDragX += ROTATE_THRESHOLD;
-    }
+    // B. Horizontal Drag -> Smooth Rotation
+    const rotSpeed = 0.01;
+    camera.targetRotation -= dx * rotSpeed;
   }
 
   // PINCH ZOOM (Mobile Touch)
@@ -442,6 +434,7 @@ const l = camera.lerpFactor;
   camera.panY += (camera.targetPanY - camera.panY) * l;
   camera.zoom += (camera.targetZoom - camera.zoom) * l;
   camera.tilt += (camera.targetTilt - camera.tilt) * l;
+  camera.rotation += (camera.targetRotation - camera.rotation) * l;
 
   // Lock the screen center: If the world just stretched due to tilt,
   // we must proportionally stretch the pan targeting so the camera doesn't wildly slide away.
@@ -452,7 +445,7 @@ const l = camera.lerpFactor;
   }
 
   draw(now);
-  hud.textContent = `${appState.toolMode}\nzoom: ${Math.round(camera.zoom * 100)}%, tilt: ${Math.round(camera.tilt * 100)}%\ntile: (${selected.x}, ${selected.y})`;
+  hud.textContent = `${appState.toolMode}\nzoom: ${Math.round(camera.zoom * 100)}%, tilt: ${Math.round(camera.tilt * 100)}%, rot: ${Math.round((camera.rotation * 180 / Math.PI) % 360)}°\ntile: (${selected.x}, ${selected.y})`;
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);

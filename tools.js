@@ -98,45 +98,6 @@ export function placeBuildingAtSelected() {
     saveMapToLocal();
   }
 }
-export function rotateGrid(camera, clockwise = true) {
-  const newElev = new Uint8Array(GRID_W * GRID_H);
-  const newBuild = new Uint8Array(GRID_W * GRID_H);
-
-  // 1. Identify the "Pivot Tile" currently at the center of the viewport
-  // We reverse the isometric math to find the tile coordinates (floating point)
-  // wx = (tx - ty) * (TILE_W / 2)
-  // wy = (tx + ty) * (TILE_H / 2)
-  const halfW = TILE_W * 0.5;
-  const halfH = TILE_H * camera.tilt * 0.5;
-  const tx = (camera.panY / halfH + camera.panX / halfW) * 0.5;
-  const ty = (camera.panY / halfH - camera.panX / halfW) * 0.5;
-  const tileInCenter = getTileInScreenCenter();
-
-  // 2. Rotate the Data
-  for (let y = 0; y < GRID_H; y++) {
-    for (let x = 0; x < GRID_W; x++) {
-      const oldIdx = y * GRID_W + x;
-      const nx = clockwise ? (GRID_H - 1) - y : y;
-      const ny = clockwise ? x : (GRID_W - 1) - x;
-      const newIdx = ny * GRID_W + nx;
-      newElev[newIdx] = elevations[oldIdx];
-      newBuild[newIdx] = buildingAt[oldIdx];
-    }
-  }
-
-  elevations.set(newElev);
-  buildingAt.set(newBuild);
-  uploadElevations();
-  rebuildBuildingInstances();
-
-  // 3. Calculate where the Pivot Tile moved to
-  // We use the same coordinate transformation used in the loop above
-  const ntx = clockwise ? (GRID_H - 1) - tileInCenter.y : tileInCenter.y;
-  const nty = clockwise ? tileInCenter.x : (GRID_W - 1) - tileInCenter.x;
-  setTileInCenter(ntx, nty);
-
-  saveMapToLocal();
-}
 
 export function getHighlightedTile() {
   if (!selected.has) return null;
@@ -194,9 +155,17 @@ export function setTileScreenPosition(tx, ty, sx, sy) {
 }
 
 export function getTileScreenPos(tx, ty) {
-  const worldX = (tx - ty) * (TILE_W * 0.5);
-  const worldY = (tx + ty) * (TILE_H * camera.tilt * 0.5);
+  const px = (tx + 0.5) - GRID_W * 0.5;
+  const py = (ty + 0.5) - GRID_H * 0.5;
+  const c = Math.cos(camera.rotation);
+  const s = Math.sin(camera.rotation);
+  const rx = px * c - py * s;
+  const ry = px * s + py * c;
+
+  const worldX = (rx - ry) * (TILE_W * 0.5);
+  const worldY = (rx + ry) * (TILE_H * camera.tilt * 0.5);
   const h = elevations[ty * GRID_W + tx] || 0;
+
   const elevatedWorldY = worldY - (h * ELEV_STEP * camera.tilt);
   const screenX = (worldX - camera.panX) * camera.zoom + (canvas.width * 0.5);
   const screenY = (elevatedWorldY - camera.panY) * camera.zoom + (canvas.height * 0.5);

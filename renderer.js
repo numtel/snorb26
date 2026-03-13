@@ -95,10 +95,10 @@
     buildProgram = linkProgram(shaders.vsBuild, shaders.fsBuild);
     pickProgram = linkProgram(shaders.vsPick, shaders.fsPick);
 
-    U = getUniforms(program, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_elevTex", "u_paletteTex", "u_selectedId", "u_hasSelection", "u_outlinePx", "u_levelActive", "u_levelMin", "u_levelMax"]);
-    WU = getUniforms(waterProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_elevTex", "u_paletteTex", "u_waterLevel", "u_alpha", "u_time"]);
-    BU = getUniforms(buildProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_elevTex", "u_sheet", "u_spritePx", "u_sheetCols"]);
-    PU = getUniforms(pickProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_elevTex"]);
+    U = getUniforms(program, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_selectedId", "u_hasSelection", "u_outlinePx", "u_levelActive", "u_levelMin", "u_levelMax"]);
+    WU = getUniforms(waterProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_waterLevel", "u_alpha", "u_time"]);
+    BU = getUniforms(buildProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_sheet", "u_spritePx", "u_sheetCols"]);
+    PU = getUniforms(pickProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
 
     setupGeometry();
     setupTextures();
@@ -299,6 +299,7 @@ export function draw(now) {
     gl.uniform2f(PU.viewSize, canvas.width, canvas.height);
     gl.uniform2f(PU.pan, camera.panX, camera.panY);
     gl.uniform1f(PU.zoom, camera.zoom);
+    gl.uniform1f(PU.rotation, camera.rotation);
     gl.uniform1f(PU.tileW, TILE_W); gl.uniform1f(PU.tileH, TILE_H);
     gl.uniform1f(PU.elevStep, ELEV_STEP); gl.uniform1i(PU.gridW, GRID_W); gl.uniform1i(PU.gridH, GRID_H);
     gl.uniform1f(PU.tileW, TILE_W); gl.uniform1f(PU.tileH, TILE_H * camera.tilt);
@@ -323,6 +324,7 @@ export function draw(now) {
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, paletteTex); gl.uniform1i(U.paletteTex, 1);
   gl.uniform2f(U.viewSize, canvas.width, canvas.height); gl.uniform2f(U.pan, camera.panX, camera.panY);
   gl.uniform1f(U.zoom, camera.zoom); gl.uniform1f(U.tileW, TILE_W); gl.uniform1f(U.tileH, TILE_H);
+  gl.uniform1f(U.rotation, camera.rotation);
   gl.uniform1f(U.elevStep, ELEV_STEP * parallaxScalar); gl.uniform1i(U.gridW, GRID_W); gl.uniform1i(U.gridH, GRID_H);
   gl.uniform1f(U.tileW, TILE_W); gl.uniform1f(U.tileH, TILE_H * camera.tilt);
   gl.uniform1f(U.elevStep, ELEV_STEP * parallaxScalar);
@@ -349,6 +351,7 @@ export function draw(now) {
 
       gl.uniform2f(BU.viewSize, canvas.width, canvas.height); gl.uniform2f(BU.pan, camera.panX, camera.panY);
       gl.uniform1f(BU.zoom, camera.zoom); gl.uniform1f(BU.tileW, TILE_W); gl.uniform1f(BU.tileH, TILE_H * camera.tilt);
+      gl.uniform1f(BU.rotation, camera.rotation);
       gl.uniform1f(BU.elevStep, ELEV_STEP * camera.tilt); gl.uniform1i(BU.gridW, GRID_W); gl.uniform1i(BU.gridH, GRID_H);
       gl.uniform1f(BU.tileW, TILE_W); gl.uniform1f(BU.tileH, TILE_H * camera.tilt);
       gl.uniform1f(BU.elevStep, ELEV_STEP * parallaxScalar);
@@ -390,6 +393,7 @@ export function draw(now) {
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, paletteTex); gl.uniform1i(WU.paletteTex, 1);
   gl.uniform2f(WU.viewSize, canvas.width, canvas.height); gl.uniform2f(WU.pan, camera.panX, camera.panY);
   gl.uniform1f(WU.zoom, camera.zoom); gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H);
+  gl.uniform1f(WU.rotation, camera.rotation);
   gl.uniform1f(WU.elevStep, ELEV_STEP); gl.uniform1i(WU.gridW, GRID_W); gl.uniform1i(WU.gridH, GRID_H);
   gl.uniform1f(WU.waterLevel, mapSettings.waterLevel); gl.uniform1f(WU.alpha, 0.48); gl.uniform1f(WU.time, (now || 0) * 0.001);
   gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H * camera.tilt);

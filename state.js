@@ -34,11 +34,13 @@ export const camera = {
   panY: (256 + 256) * (32 * 0.25),
   zoom: 1.0,
   tilt: 1.0,
+  rotation: 0,
   // New target values for interpolation
   targetPanX: 0,
   targetPanY: (256 + 256) * (32 * 0.25),
   targetZoom: 1.0,
   targetTilt: 1.0,
+  targetRotation: 0,
 
   minZoom: 0.1,
   maxZoom: 5.0,
@@ -61,7 +63,6 @@ export const paintStroke = {
 export const brush = { radius: 2, smooth: 0.25 };
 export const appState = {
   toolMode: 'pan',
-  rotation: 0, // 0: 0°, 1: 90°, 2: 180°, 3: 270°
   showGrid: true,
 };
 
@@ -76,9 +77,16 @@ export function screenToWorld(sx, sy, canvasWidth, canvasHeight) {
 
 export function tileCenterWorld(tx, ty) {
   // Use the same math as the vertex shader for consistency
-  const wx = (tx - ty) * (TILE_W * 0.5);
   // We add 0.5 to tx and ty to get the center of the tile, not the top corner
-  const wy = (tx + ty + 1.0) * (TILE_H * camera.tilt * 0.5);
+  const px = (tx + 0.5) - GRID_W * 0.5;
+  const py = (ty + 0.5) - GRID_H * 0.5;
+  const c = Math.cos(camera.rotation);
+  const s = Math.sin(camera.rotation);
+  const rx = px * c - py * s;
+  const ry = px * s + py * c;
+
+  const wx = (rx - ry) * (TILE_W * 0.5);
+  const wy = (rx + ry) * (TILE_H * camera.tilt * 0.5);
   const h = elevations[ty * GRID_W + tx] || 0;
   return [wx, wy - (h * ELEV_STEP * camera.tilt)];
 }
@@ -96,10 +104,10 @@ export function serializeMap() {
       panX: camera.targetPanX,
       panY: camera.targetPanY,
       zoom: camera.targetZoom,
-      tilt: camera.targetTilt
+      tilt: camera.targetTilt,
+      rotation: camera.rotation,
     },
     brush,
-    rotation: appState.rotation,
     showGrid: appState.showGrid,
     waterLevel: mapSettings.waterLevel,
   };
@@ -123,20 +131,14 @@ export function deserializeMap(data) {
       camera.panX = camera.targetPanX = data.camera.panX;
       camera.panY = camera.targetPanY = data.camera.panY;
       camera.zoom = camera.targetZoom = data.camera.zoom;
-      if (data.camera.tilt !== undefined) {
-        camera.tilt = camera.targetTilt = data.camera.tilt;
-      } else {
-        // Use default value
-        camera.tilt = camera.targetTilt = 1.0;
-      }
+      camera.tilt = camera.targetTilt = data.camera.tilt !== undefined ? data.camera.tilt : 1.0;
+      camera.rotation = camera.targetRotation = data.camera.rotation || 0;
     }
 
     mapSettings.waterLevel = data.waterLevel || 86;
     const wEl = document.getElementById('waterLevel');
     if (wEl) wEl.value = mapSettings.waterLevel;
     updatePaletteTexture();
-
-    if (data.rotation !== undefined) appState.rotation = data.rotation;
 
     if (data.showGrid !== undefined) appState.showGrid = data.showGrid;
     else appState.showGrid = true;
