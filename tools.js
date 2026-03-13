@@ -117,24 +117,6 @@ export function getHighlightedTile() {
   };
 }
 
-export function getTileInScreenCenter() {
-  // Not efficient but tough to do with elevations
-  // TODO binary search for efficiency
-  let closeX, closeY, dist = canvas.width * canvas.height;
-  for(let x = 0; x < GRID_W; x++) {
-    for(let y = 0; y < GRID_H; y++) {
-      const [wx, wy] = tileCenterWorld(x, y);
-      const thisDist  = Math.hypot(wx - camera.panX, wy - camera.panY);
-      if(thisDist < dist) {
-        closeX = x; closeY = y;
-        dist = thisDist;
-      }
-    }
-  }
-
-  return { x: closeX, y: closeY };
-}
-
 export function setTileScreenPosition(tx, ty, sx, sy) {
   // 1. Find the world-space center of the target tile
   const [wx, wy] = tileCenterWorld(tx, ty);
