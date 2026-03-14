@@ -146,6 +146,13 @@ p { margin-bottom:15px; }
   display: none; /* Controlled via JS or [open] */
 }
 
+@media (max-width:480px) {
+  .menubar .menu-container:last-child .menu {
+    left: auto;
+    right: 0;
+  }
+}
+
 .menubar .menu[open] {
   display: block;
 }
