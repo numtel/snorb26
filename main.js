@@ -214,12 +214,16 @@ function menuClicks(command, tool) {
         resizeMapState(nextW, nextH);
         seedDemo();
         buildingAt.fill(0);
+        mapSettings.waterLevel = 86; // Reset to default
+        const wEl = document.getElementById('waterLevel');
+        if (wEl) wEl.value = mapSettings.waterLevel;
 
         // 3. Reset Camera: Center the view and zoom out completely
         setTileInCenter(GRID_W / 2, GRID_H / 2);
         camera.targetZoom = camera.minZoom;
 
         // 4. Update GPU and Save
+        updatePaletteTexture();
         uploadElevations();
         rebuildBuildingInstances();
         saveMapToLocal();
