@@ -162,13 +162,14 @@ window.addEventListener('keydown', (e) => {
     // 2. Handle Commands (e.g., 'G' for grid, 'Arrows' for pan)
     else if (cmd) {
       if (continuousCommands.includes(cmd)) {
-        if(cmd === 'rotate-left' || cmd === 'rotate-right') {
-          orbitPivot = null;
-          requestPick(canvas.width * 0.5, canvas.height * 0.5, (selected) => {
-            if(selected.has) {
-              orbitPivot = {x: selected.x, y: selected.y};
-            }
-          });
+        if (['rotate-left', 'rotate-right', 'tilt-up', 'tilt-down'].includes(cmd)) {
+          if(!orbitPivot) {
+            requestPick(canvas.width * 0.5, canvas.height * 0.5, (selected) => {
+              if(selected.has) {
+                orbitPivot = {x: selected.x, y: selected.y};
+              }
+            });
+          }
         }
         activeCommands.add(cmd);
       } else {
@@ -580,8 +581,6 @@ function tick(now) {
     if (Math.abs(velocityY) < 0.01) velocityY = 0;
   }
 
-  const oldTilt = camera.tilt;
-
   // Interpolation logic
   camera.panX += (camera.targetPanX - camera.panX) * l;
   camera.panY += (camera.targetPanY - camera.panY) * l;
@@ -602,14 +601,9 @@ function tick(now) {
   camera.targetPanY += driftY;
   camera.panX += driftX;
   camera.panY += driftY;
-
-  // Lock the screen center: If the world just stretched due to tilt,
-  // we must proportionally stretch the pan targeting so the camera doesn't wildly slide away.
-  if (oldTilt !== camera.tilt && oldTilt > 0) {
-    const ratio = camera.tilt / oldTilt;
-    camera.panY *= ratio;
-    camera.targetPanY *= ratio;
-  }
+  if (pointers.size === 0 && activeCommands.size === 0 && Math.abs(driftX) < 1 && Math.abs(driftY) < 1) {
+    orbitPivot = null;
+  };
 
   draw(now);
   hud.textContent = `${appState.toolMode}\nzoom: ${Math.round(camera.zoom * 100)}%, tilt: ${Math.round(camera.tilt * 100)}%, rot: ${Math.round((camera.rotation * 180 / Math.PI) % 360)}°\ntile: (${selected.x}, ${selected.y})`;
