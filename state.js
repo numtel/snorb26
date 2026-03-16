@@ -1,14 +1,14 @@
 import { uploadElevations, rebuildBuildingInstances, loadCustomTexture, updatePaletteTexture} from './renderer.js';
 import { updateViewMenuUI } from './main.js';
-export const GRID_W = 256;
-export const GRID_H = 256;
+export let GRID_W = 256;
+export let GRID_H = 256;
 export const TILE_W = 64;
 export const TILE_H = 32;
 export const ELEV_STEP = 6;
 export const BUILD_SPRITES = 4;
 
-export const elevations = new Uint8Array(GRID_W * GRID_H);
-export const buildingAt = new Uint8Array(GRID_W * GRID_H);
+export let elevations = new Uint8Array(GRID_W * GRID_H);
+export let buildingAt = new Uint8Array(GRID_W * GRID_H);
 export const customBuildingRegistry = [];
 
 export const SC3K_COLOR_STOPS = [
@@ -130,6 +130,7 @@ export function deserializeMap(data) {
   if (!data || !data.elevations) return false;
 
   try {
+    resizeMapState(data.grid.w, data.grid.h);
     elevations.set(data.elevations);
     buildingAt.set(data.buildingAt);
 
@@ -173,6 +174,13 @@ export function deserializeMap(data) {
     console.error("Failed to parse map data", e);
     return false;
   }
+}
+
+export function resizeMapState(width, height) {
+  GRID_W = width;
+  GRID_H = height;
+  elevations = new Uint8Array(GRID_W * GRID_H);
+  buildingAt = new Uint8Array(GRID_W * GRID_H);
 }
 
 // --- 2. Local Storage Implementation ---

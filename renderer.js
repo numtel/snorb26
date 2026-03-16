@@ -156,6 +156,7 @@
     gl.bindTexture(gl.TEXTURE_2D, elevTex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, GRID_W, GRID_H, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, elevations);
 
     paletteTex = gl.createTexture();
@@ -214,7 +215,8 @@
 
 export function uploadElevations() {
   gl.bindTexture(gl.TEXTURE_2D, elevTex);
-  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, GRID_W, GRID_H, gl.RED_INTEGER, gl.UNSIGNED_BYTE, elevations);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, GRID_W, GRID_H, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, elevations);
 }
 
 export function rebuildBuildingInstances() {

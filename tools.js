@@ -3,7 +3,7 @@ import { canvas, uploadElevations, rebuildBuildingInstances, requestPick, loadCu
 import { saveMapToLocal } from './state.js';
 
 export function seedDemo() {
-  const cx = GRID_W * 0.5, cy = GRID_H * 0.5;
+  const cx = Math.floor(GRID_W * 0.5), cy = Math.floor(GRID_H * 0.5);
   for (let y = 0; y < GRID_H; y++) {
     for (let x = 0; x < GRID_W; x++) {
       const r = Math.hypot((x - cx) / GRID_W, (y - cy) / GRID_H);

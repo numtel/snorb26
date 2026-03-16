@@ -1,4 +1,4 @@
-import { clamp, camera, selected, levelSel, paintStroke, brush, appState, screenToWorld, tileCenterWorld, elevations, loadMapFromLocal } from './state.js';
+import { clamp, camera, selected, levelSel, paintStroke, brush, appState, screenToWorld, tileCenterWorld, elevations, loadMapFromLocal, resizeMapState } from './state.js';
 import { initWebGL, canvas, requestPick, rebuildPickResources, draw, uploadElevations, updatePaletteTexture, rebuildBuildingInstances } from './renderer.js';
 import { seedDemo, brushApplyDelta, brushForest, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, placeCustomBuildingAtSelected, removeBuildingAtSelected, setTileInCenter } from './tools.js';
 import { GRID_W, GRID_H, buildingAt, saveMapToLocal, uploadMapFile, downloadMapFile, mapSettings } from './state.js';
@@ -205,10 +205,13 @@ function menuClicks(command, tool) {
   switch(command) {
     case 'reset':
       if (confirm("Are you sure you want to clear the city?")) {
+        const nextW = parseInt(document.getElementById('newWidth').value, 10) || 256;
+        const nextH = parseInt(document.getElementById('newHeight').value, 10) || 256;
         // 1. Clear local storage
         localStorage.removeItem('dencity_map_data');
 
         // 2. Re-seed the map elevations and clear buildings
+        resizeMapState(nextW, nextH);
         seedDemo();
         buildingAt.fill(0);
 
