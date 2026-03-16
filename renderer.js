@@ -13,7 +13,7 @@
   export const customTextures = new Map();
 
   const pickState = { fbo: null, colorTex: null, depthRb: null };
-  let pendingPick = null;
+  let pendingPick = null, pendingPickCb = null;
   const pickPixel = new Uint8Array(4);
 
   export function loadCustomTexture(url) {
@@ -263,8 +263,12 @@ export function rebuildBuildingInstances() {
   }
 }
 
-export function requestPick(sx, sy) {
+export function requestPick(sx, sy, callback) {
   pendingPick = { x: Math.max(0, Math.min(canvas.width - 1, Math.round(sx))), y: Math.max(0, Math.min(canvas.height - 1, Math.round(sy))) };
+  if(typeof callback === 'function') {
+    if(pendingPickCb !== null) throw new Error('simultaneous_requestPick');
+    pendingPickCb = callback;
+  }
 }
 
 export function rebuildPickResources() {
@@ -314,6 +318,10 @@ export function draw(now) {
     // FIX: Click off map properly resets
     if (id < 0 || id >= GRID_W * GRID_H) { selected.has = false; } 
     else { selected.has = true; selected.id = id; selected.x = id % GRID_W; selected.y = Math.floor(id / GRID_W); }
+    if(pendingPickCb) {
+      pendingPickCb(selected);
+      pendingPickCb = null;
+    }
     
     pendingPick = null;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);

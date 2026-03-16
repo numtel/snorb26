@@ -162,6 +162,14 @@ window.addEventListener('keydown', (e) => {
     // 2. Handle Commands (e.g., 'G' for grid, 'Arrows' for pan)
     else if (cmd) {
       if (continuousCommands.includes(cmd)) {
+        if(cmd === 'rotate-left' || cmd === 'rotate-right') {
+          orbitPivot = null;
+          requestPick(canvas.width * 0.5, canvas.height * 0.5, (selected) => {
+            if(selected.has) {
+              orbitPivot = {x: selected.x, y: selected.y};
+            }
+          });
+        }
         activeCommands.add(cmd);
       } else {
         // This handles "one-shot" actions like toggle-grid and center-view
@@ -189,7 +197,7 @@ function menuClicks(command, tool) {
       b.classList.toggle('active', b.dataset.tool === tool)
     );
     if(tool === 'orbit') {
-      enableOrientation();
+//       enableOrientation();
     }
     return;
   }
@@ -288,7 +296,7 @@ document.getElementById('brushSmooth').addEventListener('input', e => {
 
 // Canvas Events
 const pointers = new Map();
-let dragPrimaryId = null, pinchStartDist = 0, pinchStartZoom = 1, pinchStartPan = [0, 0], pinchAnchorWorld = [0, 0];
+let dragPrimaryId = null, pinchStartDist = 0, pinchStartZoom = 1, pinchStartPan = [0, 0], pinchAnchorWorld = [0, 0], orbitPivot = null;
 let orbitDragX = 0;
 
 canvas.addEventListener("contextmenu", e => e.preventDefault());
@@ -299,8 +307,7 @@ canvas.addEventListener("pointerdown", (e) => {
   pointers.set(e.pointerId, { x: sx, y: sy });
 
   if (e.button === 2) { // Right-click center
-    requestPick(sx, sy);
-    setTimeout(() => { 
+    requestPick(sx, sy, (selected) => {
       if (selected.has) { 
         const [wx, wy] = tileCenterWorld(selected.x, selected.y);
         // Update targets so the camera glides to the tile
@@ -311,7 +318,7 @@ canvas.addEventListener("pointerdown", (e) => {
         // camera.panX = wx;
         // camera.panY = wy;
       } 
-    }, 20);
+    });
     return;
   }
 
@@ -372,7 +379,20 @@ canvas.addEventListener("pointerdown", (e) => {
     }
   }, 30);
 
-  if (pointers.size === 1) dragPrimaryId = e.pointerId;
+  if (pointers.size === 1) {
+    dragPrimaryId = e.pointerId;
+
+    if(appState.toolMode === 'orbit') {
+      // This updates the 'selected' object in state.js via the pickProgram
+      orbitPivot = null;
+      requestPick(canvas.width * 0.5, canvas.height * 0.5, (selected) => {
+        if(selected.has) {
+          orbitPivot = {x: selected.x, y: selected.y};
+        }
+      });
+    }
+  }
+
   if (pointers.size === 2) {
     const pts = Array.from(pointers.values());
     pinchStartDist = Math.max(1, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y));
@@ -513,11 +533,10 @@ requestPick(canvas.width * 0.5, canvas.height * 0.5); // Initial Selection
 function tick(now) {
   const l = camera.lerpFactor;
 
-  const [worldCenterX, worldCenterY] = screenToWorld(canvas.width / 2, canvas.height / 2, canvas.width, canvas.height);
   // We need a way to map world back to tile index. Since we have 'selected',
   // let's use the current selection or the map center as the pivot.
-  const pivotX = selected.has ? selected.x : GRID_W / 2;
-  const pivotY = selected.has ? selected.y : GRID_H / 2;
+  const pivotX = orbitPivot ? orbitPivot.x : GRID_W / 2;
+  const pivotY = orbitPivot ? orbitPivot.y : GRID_H / 2;
   // Capture the world position of our pivot tile BEFORE rotation/tilt changes
   const [oldWx, oldWy] = tileCenterWorld(pivotX, pivotY);
 

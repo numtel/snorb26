@@ -148,7 +148,8 @@ export function getTileScreenPos(tx, ty) {
   const worldY = (rx + ry) * (TILE_H * camera.tilt * 0.5);
   const h = elevations[ty * GRID_W + tx] || 0;
 
-  const elevatedWorldY = worldY - (h * ELEV_STEP * camera.tilt);
+  const parallaxScalar = 0.5 + (0.5 / camera.tilt);
+  const elevatedWorldY = worldY - (h * ELEV_STEP * parallaxScalar);
   const screenX = (worldX - camera.panX) * camera.zoom + (canvas.width * 0.5);
   const screenY = (elevatedWorldY - camera.panY) * camera.zoom + (canvas.height * 0.5);
   return [screenX, screenY];

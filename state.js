@@ -89,7 +89,8 @@ export function tileCenterWorld(tx, ty, rotOverride = null) {
   const wx = (rx - ry) * (TILE_W * 0.5);
   const wy = (rx + ry) * (TILE_H * camera.tilt * 0.5);
   const h = elevations[ty * GRID_W + tx] || 0;
-  return [wx, wy - (h * ELEV_STEP * camera.tilt)];
+  const parallaxScalar = 0.5 + (0.5 / camera.tilt);
+  return [wx, wy - (h * ELEV_STEP * parallaxScalar)];
 }
 
 // Convert Screen coordinates to "Anchor" coordinates
