@@ -1,5 +1,32 @@
-import { GRID_W, GRID_H, TILE_W, TILE_H, ELEV_STEP, clamp, elevations, buildingAt, paintStroke, brush, BUILD_SPRITES, selected, levelSel, camera, tileCenterWorld, customBuildingRegistry } from './state.js';
-import { canvas, uploadElevations, rebuildBuildingInstances, requestPick, loadCustomTexture } from './renderer.js';
+import {
+  GRID_W,
+  GRID_H,
+  TILE_W,
+  TILE_H,
+  ELEV_STEP,
+  clamp,
+  elevations,
+  buildingAt,
+  paintStroke,
+  brush,
+  BUILD_SPRITES,
+  selected,
+  levelSel,
+  camera,
+  tileCenterWorld,
+  customBuildingRegistry,
+  extrusions,
+  extrusionSettings,
+  appState,
+} from './state.js';
+import {
+  canvas,
+  uploadElevations,
+  rebuildBuildingInstances,
+  requestPick,
+  loadCustomTexture,
+  rebuildExtrusionBuffers,
+} from './renderer.js';
 import { saveMapToLocal } from './state.js';
 
 export function seedDemo() {
@@ -246,4 +273,22 @@ export function brushForest(cx, cy, input) {
 
   rebuildBuildingInstances();
   saveMapToLocal();
+}
+
+export function appendExtrusionPoint(x, y) {
+    if (!appState.activeExtrusion) {
+        appState.activeExtrusion = { points: [{x, y}], width: extrusionSettings.width, height: extrusionSettings.height, color: [...extrusionSettings.color] };
+        extrusions.push(appState.activeExtrusion);
+    } else {
+        const pts = appState.activeExtrusion.points;
+        if (pts[pts.length - 1].x !== x || pts[pts.length - 1].y !== y) {
+            pts.push({x, y});
+        }
+    }
+    rebuildExtrusionBuffers();
+    saveMapToLocal();
+}
+
+export function finishExtrusion() {
+    appState.activeExtrusion = null;
 }

@@ -1,19 +1,37 @@
-  import { GRID_W, GRID_H, TILE_W, TILE_H, ELEV_STEP, BUILD_SPRITES, elevations, SC3K_COLOR_STOPS, buildingAt, camera, selected, appState, levelSel, customBuildingRegistry, mapSettings } from './state.js';
+  import {
+    GRID_W,
+    GRID_H,
+    TILE_W,
+    TILE_H,
+    ELEV_STEP,
+    BUILD_SPRITES,
+    elevations,
+    SC3K_COLOR_STOPS,
+    buildingAt,
+    camera,
+    selected,
+    appState,
+    levelSel,
+    customBuildingRegistry,
+    mapSettings,
+    extrusions,
+  } from './state.js';
   import * as shaders from './shaders.js';
 
   export let gl, canvas;
-  let program, waterProgram, buildProgram, pickProgram, skyProgram;
-  let vao, buildVao, buildInstanceBuf;
+  let program, waterProgram, buildProgram, pickProgram, skyProgram, extrudeProgram;
+  let vao, buildVao, buildInstanceBuf, extrudeVao, extrudeBuf;
   let elevTex, paletteTex, buildingTex;
-  let U, WU, BU, PU, SU;
+  let U, WU, BU, PU, SU, EU;
   let buildInstanceCount = 0;
+  export let extrudeVertCount = 0;
 
   export const buildBuffers = new Map();
   const typeBuffers = new Map();
   export const customTextures = new Map();
 
   const pickState = { fbo: null, colorTex: null, depthRb: null };
-  let pendingPick = null, pendingPickCb = null;
+  let pendingPick = null, pendingPickCb = [];
   const pickPixel = new Uint8Array(4);
 
   export function loadCustomTexture(url) {
@@ -95,12 +113,14 @@
     buildProgram = linkProgram(shaders.vsBuild, shaders.fsBuild);
     pickProgram = linkProgram(shaders.vsPick, shaders.fsPick);
     skyProgram = linkProgram(shaders.vsSky, shaders.fsSky);
+    extrudeProgram = linkProgram(shaders.vsExtrude, shaders.fsExtrude);
 
     U = getUniforms(program, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_selectedId", "u_hasSelection", "u_outlinePx", "u_levelActive", "u_levelMin", "u_levelMax"]);
     WU = getUniforms(waterProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_waterLevel", "u_alpha", "u_time"]);
     BU = getUniforms(buildProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_sheet", "u_spritePx", "u_sheetCols"]);
     PU = getUniforms(pickProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
     SU = getUniforms(skyProgram, ["u_tilt", "u_rotation", "u_pan"]);
+    EU = getUniforms(extrudeProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
 
     setupGeometry();
     setupTextures();
@@ -149,6 +169,15 @@
     gl.enableVertexAttribArray(3); gl.vertexAttribDivisor(3, 1);
 
     buildInstanceBuf = gl.createBuffer();
+
+    extrudeVao = gl.createVertexArray();
+    extrudeBuf = gl.createBuffer();
+    gl.bindVertexArray(extrudeVao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, extrudeBuf);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 36, 0);
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 36, 8);
+    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 36, 12);
+    gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 36, 24);
   }
 
   function setupTextures() {
@@ -265,11 +294,132 @@ export function rebuildBuildingInstances() {
   }
 }
 
+export function rebuildExtrusionBuffers() {
+    const verts = [];
+    const pushVert = (x, y, zOffset, nx, ny, nz, r, g, b) => verts.push(x, y, zOffset, nx, ny, nz, r, g, b);
+    
+    const catmullRom = (p0, p1, p2, p3, t) => {
+        const t2 = t * t, t3 = t2 * t;
+        const f0 = -0.5*t3 + t2 - 0.5*t; 
+        const f1 = 1.5*t3 - 2.5*t2 + 1.0;
+        const f2 = -1.5*t3 + 2.0*t2 + 0.5*t; 
+        const f3 = 0.5*t3 - 0.5*t2;
+        return { x: p0.x*f0 + p1.x*f1 + p2.x*f2 + p3.x*f3, y: p0.y*f0 + p1.y*f1 + p2.y*f2 + p3.y*f3 };
+    };
+
+    for (const ext of extrusions) {
+        if (ext.points.length < 2) continue;
+        
+        // 1. Generate the dense, smooth path points
+        const dense = [];
+        const steps = 12;
+        const pts = [ext.points[0], ...ext.points, ext.points[ext.points.length-1]];
+        for (let i = 1; i < pts.length - 2; i++) {
+            const iterations = (i === pts.length - 3) ? steps + 1 : steps;
+            for (let s = 0; s < iterations; s++) {
+                dense.push(catmullRom(pts[i-1], pts[i], pts[i+1], pts[i+2], s / steps));
+            }
+        }
+
+        // 2. Generate "Rings" at each point (pre-calculate cross-sections)
+        const rings = [];
+        const w = ext.width / 2;
+        const h = ext.height;
+
+        for (let i = 0; i < dense.length; i++) {
+            const p = dense[i];
+            const pPrev = dense[Math.max(0, i - 1)];
+            const pNext = dense[Math.min(dense.length - 1, i + 1)];
+            
+            // Calculate the average tangent direction at this point
+            let dx = pNext.x - pPrev.x;
+            let dy = pNext.y - pPrev.y;
+            let len = Math.hypot(dx, dy);
+            
+            // Fallback for overlapping points
+            if (len < 0.0001 && i < dense.length - 2) {
+                const pNextNext = dense[i+2];
+                dx = pNextNext.x - p.x; dy = pNextNext.y - p.y;
+                len = Math.hypot(dx, dy);
+            }
+            
+            const nx = -dy / (len || 1), ny = dx / (len || 1);
+            rings.push({
+                p, nx, ny,
+                TL: { x: p.x + nx * w, y: p.y + ny * w }, // Top Left
+                TR: { x: p.x - nx * w, y: p.y - ny * w }  // Top Right
+            });
+        }
+
+        // 3. Stitch the rings together into triangles
+        const c = ext.color;
+        for (let i = 0; i < rings.length - 1; i++) {
+            const r0 = rings[i], r1 = rings[i+1];
+
+            // Top Face (Shared vertices = no gaps)
+            pushVert(r0.TL.x, r0.TL.y, h, 0,0,1, c[0], c[1], c[2]);
+            pushVert(r0.TR.x, r0.TR.y, h, 0,0,1, c[0], c[1], c[2]);
+            pushVert(r1.TR.x, r1.TR.y, h, 0,0,1, c[0], c[1], c[2]);
+            
+            pushVert(r0.TL.x, r0.TL.y, h, 0,0,1, c[0], c[1], c[2]);
+            pushVert(r1.TR.x, r1.TR.y, h, 0,0,1, c[0], c[1], c[2]);
+            pushVert(r1.TL.x, r1.TL.y, h, 0,0,1, c[0], c[1], c[2]);
+
+            // Left Wall
+            pushVert(r0.TL.x, r0.TL.y, 0, r0.nx, r0.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
+            pushVert(r1.TL.x, r1.TL.y, 0, r1.nx, r1.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
+            pushVert(r1.TL.x, r1.TL.y, h, r1.nx, r1.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
+
+            pushVert(r0.TL.x, r0.TL.y, 0, r0.nx, r0.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
+            pushVert(r1.TL.x, r1.TL.y, h, r1.nx, r1.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
+            pushVert(r0.TL.x, r0.TL.y, h, r0.nx, r0.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
+
+            // Right Wall
+            pushVert(r0.TR.x, r0.TR.y, 0, -r0.nx, -r0.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
+            pushVert(r0.TR.x, r0.TR.y, h, -r0.nx, -r0.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
+            pushVert(r1.TR.x, r1.TR.y, h, -r1.nx, -r1.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
+
+            pushVert(r0.TR.x, r0.TR.y, 0, -r0.nx, -r0.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
+            pushVert(r1.TR.x, r1.TR.y, h, -r1.nx, -r1.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
+            pushVert(r1.TR.x, r1.TR.y, 0, -r1.nx, -r1.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
+        }
+
+        // 4. End Caps (closing the start and end of the ribbon)
+        if (rings.length > 1) {
+            const first = rings[0], last = rings[rings.length-1];
+            // Start
+            const fdx = rings[1].p.x - first.p.x, fdy = rings[1].p.y - first.p.y;
+            const fl = Math.hypot(fdx, fdy);
+            const fnx = -fdx/(fl||1), fny = -fdy/(fl||1);
+            pushVert(first.TL.x, first.TL.y, 0, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(first.TR.x, first.TR.y, 0, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(first.TL.x, first.TL.y, h, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(first.TR.x, first.TR.y, 0, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(first.TR.x, first.TR.y, h, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(first.TL.x, first.TL.y, h, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            
+            // End
+            const bdx = last.p.x - rings[rings.length-2].p.x, bdy = last.p.y - rings[rings.length-2].p.y;
+            const bl = Math.hypot(bdx, bdy);
+            const bnx = bdx/(bl||1), bny = bdy/(bl||1);
+            pushVert(last.TL.x, last.TL.y, 0, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(last.TL.x, last.TL.y, h, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(last.TR.x, last.TR.y, 0, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(last.TR.x, last.TR.y, 0, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(last.TL.x, last.TL.y, h, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(last.TR.x, last.TR.y, h, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+        }
+    }
+
+    extrudeVertCount = verts.length / 9;
+    gl.bindBuffer(gl.ARRAY_BUFFER, extrudeBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.DYNAMIC_DRAW);
+}
+
 export function requestPick(sx, sy, callback) {
   pendingPick = { x: Math.max(0, Math.min(canvas.width - 1, Math.round(sx))), y: Math.max(0, Math.min(canvas.height - 1, Math.round(sy))) };
   if(typeof callback === 'function') {
-    if(pendingPickCb !== null) throw new Error('simultaneous_requestPick');
-    pendingPickCb = callback;
+    pendingPickCb.push(callback);
   }
 }
 
@@ -320,9 +470,8 @@ export function draw(now) {
     // FIX: Click off map properly resets
     if (id < 0 || id >= GRID_W * GRID_H) { selected.has = false; } 
     else { selected.has = true; selected.id = id; selected.x = id % GRID_W; selected.y = Math.floor(id / GRID_W); }
-    if(pendingPickCb) {
-      pendingPickCb(selected);
-      pendingPickCb = null;
+    if(pendingPickCb.length > 0) {
+      pendingPickCb.splice(0, pendingPickCb.length).forEach(fun => fun(selected));
     }
     
     pendingPick = null;
@@ -410,6 +559,21 @@ export function draw(now) {
           gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, info.count);
       }
       gl.depthMask(true); gl.disable(gl.BLEND);
+  }
+
+  // DRAW EXTRUSIONS
+  if (extrudeVertCount > 0) {
+      gl.useProgram(extrudeProgram);
+      gl.bindVertexArray(extrudeVao);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, elevTex); gl.uniform1i(EU.elevTex, 0);
+
+      gl.uniform2f(EU.viewSize, canvas.width, canvas.height); gl.uniform2f(EU.pan, camera.panX, camera.panY);
+      gl.uniform1f(EU.zoom, camera.zoom); gl.uniform1f(EU.tileW, TILE_W); gl.uniform1f(EU.tileH, TILE_H * camera.tilt);
+      gl.uniform1f(EU.rotation, camera.rotation);
+      gl.uniform1f(EU.elevStep, ELEV_STEP * parallaxScalar); gl.uniform1i(EU.gridW, GRID_W); gl.uniform1i(EU.gridH, GRID_H);
+
+      gl.enable(gl.BLEND); gl.depthMask(true);
+      gl.drawArrays(gl.TRIANGLES, 0, extrudeVertCount);
   }
 
   // Water Program

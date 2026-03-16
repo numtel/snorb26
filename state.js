@@ -1,4 +1,10 @@
-import { uploadElevations, rebuildBuildingInstances, loadCustomTexture, updatePaletteTexture} from './renderer.js';
+import {
+  uploadElevations,
+  rebuildBuildingInstances,
+  loadCustomTexture,
+  updatePaletteTexture,
+  rebuildExtrusionBuffers,
+} from './renderer.js';
 import { updateViewMenuUI } from './main.js';
 export let GRID_W = 256;
 export let GRID_H = 256;
@@ -10,6 +16,8 @@ export const BUILD_SPRITES = 4;
 export let elevations = new Uint8Array(GRID_W * GRID_H);
 export let buildingAt = new Uint8Array(GRID_W * GRID_H);
 export const customBuildingRegistry = [];
+export const extrusions = [];
+export const extrusionSettings = { width: 0.5, height: 2.0, color: [0.5, 0.5, 0.5] };
 
 export const SC3K_COLOR_STOPS = [
   { t:   0, c:[  0/255,  20/255,  60/255] },
@@ -64,6 +72,7 @@ export const brush = { radius: 2, smooth: 0.25 };
 export const appState = {
   toolMode: 'pan',
   showGrid: true,
+  activeExtrusion: null,
 };
 
 // Helpers
@@ -112,6 +121,7 @@ export function serializeMap() {
     elevations: Array.from(elevations),
     buildingAt: Array.from(buildingAt),
     customBuildingRegistry: Array.from(customBuildingRegistry),
+    extrusions,
     camera: {
       panX: camera.targetPanX,
       panY: camera.targetPanY,
@@ -138,6 +148,11 @@ export function deserializeMap(data) {
        customBuildingRegistry.length = 0;
        customBuildingRegistry.push(...data.customBuildingRegistry);
        customBuildingRegistry.forEach(url => loadCustomTexture(url));
+    }
+
+    if (data.extrusions) {
+      extrusions.length = 0;
+      extrusions.push(...data.extrusions);
     }
 
     if (data.camera) {
@@ -168,6 +183,7 @@ export function deserializeMap(data) {
       if (sEl) sEl.value = brush.smooth;
     }
     uploadElevations();
+    rebuildExtrusionBuffers();
     rebuildBuildingInstances();
     return true;
   } catch (e) {
@@ -181,6 +197,8 @@ export function resizeMapState(width, height) {
   GRID_H = height;
   elevations = new Uint8Array(GRID_W * GRID_H);
   buildingAt = new Uint8Array(GRID_W * GRID_H);
+  extrusions.length = 0;
+  appState.activeExtrusion = null;
 }
 
 // --- 2. Local Storage Implementation ---

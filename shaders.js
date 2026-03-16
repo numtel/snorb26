@@ -224,3 +224,58 @@ void main() {
 
     fragColor = vec4(color, 1.0);
 }`;
+
+export const vsExtrude = `#version 300 es
+precision highp float;
+layout(location=0) in vec2 a_pos;
+layout(location=1) in float a_zOffset;
+layout(location=2) in vec3 a_normal;
+layout(location=3) in vec3 a_color;
+
+uniform vec2 u_viewSize; uniform vec2 u_pan; uniform float u_zoom;
+uniform float u_tileW; uniform float u_tileH; uniform float u_elevStep;
+uniform int u_gridW; uniform int u_gridH; uniform float u_rotation;
+uniform highp usampler2D u_elevTex;
+
+out vec3 v_normal;
+out vec3 v_color;
+
+float getInterpolatedHeight(vec2 pos) {
+    vec2 p = clamp(pos, vec2(0.0), vec2(float(u_gridW - 1), float(u_gridH - 1)));
+    ivec2 i = ivec2(floor(p)); vec2 f = fract(p);
+    float h00 = float(texelFetch(u_elevTex, i, 0).r);
+    float h10 = float(texelFetch(u_elevTex, i + ivec2(1, 0), 0).r);
+    float h01 = float(texelFetch(u_elevTex, i + ivec2(0, 1), 0).r);
+    float h11 = float(texelFetch(u_elevTex, i + ivec2(1, 1), 0).r);
+    float h0 = mix(h00, h10, f.x); float h1 = mix(h01, h11, f.x);
+    return mix(h0, h1, f.y);
+}
+
+void main() {
+    float hV = getInterpolatedHeight(a_pos);
+    vec2 p = a_pos - vec2(float(u_gridW)*0.5, float(u_gridH)*0.5);
+    float c = cos(u_rotation); float s = sin(u_rotation);
+    vec2 r = vec2(p.x * c - p.y * s, p.x * s + p.y * c);
+
+    vec2 world = vec2((r.x - r.y) * (u_tileW * 0.5), (r.x + r.y) * (u_tileH * 0.5));
+    float depthZ = 1.0 - ((r.x + r.y + float(u_gridW + u_gridH)*0.5) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006 - a_zOffset * 0.001;
+
+    world.y -= hV * u_elevStep + (a_zOffset * u_elevStep);
+
+    vec2 clip = (((world - u_pan) * u_zoom + (u_viewSize * 0.5)) / u_viewSize) * 2.0 - 1.0; clip.y *= -1.0;
+    gl_Position = vec4(clip, depthZ, 1.0);
+    v_normal = a_normal;
+    v_color = a_color;
+}`;
+
+export const fsExtrude = `#version 300 es
+precision highp float;
+in vec3 v_normal;
+in vec3 v_color;
+out vec4 fragColor;
+void main() {
+    vec3 lightDir = normalize(vec3(0.5, 1.0, 0.5));
+    float diff = max(dot(normalize(v_normal), lightDir), 0.0);
+    float shadow = mix(0.5, 1.0, diff);
+    fragColor = vec4(v_color * shadow, 1.0);
+}`;

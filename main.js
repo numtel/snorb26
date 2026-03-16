@@ -1,7 +1,49 @@
-import { clamp, camera, selected, levelSel, paintStroke, brush, appState, screenToWorld, tileCenterWorld, elevations, loadMapFromLocal, resizeMapState } from './state.js';
-import { initWebGL, canvas, requestPick, rebuildPickResources, draw, uploadElevations, updatePaletteTexture, rebuildBuildingInstances } from './renderer.js';
-import { seedDemo, brushApplyDelta, brushForest, brushSmoothTouched, commitLevelSelection, placeBuildingAtSelected, placeCustomBuildingAtSelected, removeBuildingAtSelected, setTileInCenter } from './tools.js';
-import { GRID_W, GRID_H, buildingAt, saveMapToLocal, uploadMapFile, downloadMapFile, mapSettings } from './state.js';
+import {
+  GRID_W,
+  GRID_H,
+  buildingAt,
+  saveMapToLocal,
+  uploadMapFile,
+  downloadMapFile,
+  mapSettings,
+  extrusionSettings,
+  clamp,
+  camera,
+  selected,
+  levelSel,
+  paintStroke,
+  brush,
+  appState,
+  screenToWorld,
+  tileCenterWorld,
+  elevations,
+  loadMapFromLocal,
+  resizeMapState,
+} from './state.js';
+import {
+  initWebGL,
+  canvas,
+  requestPick,
+  rebuildPickResources,
+  draw,
+  uploadElevations,
+  updatePaletteTexture,
+  rebuildBuildingInstances,
+  rebuildExtrusionBuffers,
+} from './renderer.js';
+import {
+  seedDemo,
+  brushApplyDelta,
+  brushForest,
+  brushSmoothTouched,
+  commitLevelSelection,
+  placeBuildingAtSelected,
+  placeCustomBuildingAtSelected,
+  removeBuildingAtSelected,
+  setTileInCenter,
+  appendExtrusionPoint,
+  finishExtrusion,
+} from './tools.js';
 
 // Setup Map & DOM Elements
 const hud = document.getElementById('hud');
@@ -194,6 +236,7 @@ function menuClicks(command, tool) {
   if(tool) {
     syncBrushFromUI();
     appState.toolMode = tool;
+    if (tool !== 'extrude' && appState.activeExtrusion) finishExtrusion();
     document.querySelectorAll('button[data-tool]').forEach(b =>
       b.classList.toggle('active', b.dataset.tool === tool)
     );
@@ -227,6 +270,7 @@ function menuClicks(command, tool) {
         updatePaletteTexture();
         uploadElevations();
         rebuildBuildingInstances();
+        rebuildExtrusionBuffers();
         saveMapToLocal();
       }
       break;
@@ -287,19 +331,26 @@ window.addEventListener('pointerup', (e) => {
   dragStartedOnTrigger = false;
 });
 
-document.getElementById('waterLevel').addEventListener('input', e => {
-  mapSettings.waterLevel = parseInt(e.target.value, 10);
-  updatePaletteTexture();
-  saveMapToLocal();
-});
-
-document.getElementById('brushSize').addEventListener('input', e => {
-  brush.radius = parseInt(e.target.value, 10)
-  saveMapToLocal();
-});
-document.getElementById('brushSmooth').addEventListener('input', e => {
-  brush.smooth = parseFloat(e.target.value)
-  saveMapToLocal();
+Object.entries({
+  waterLevel: e => {
+    mapSettings.waterLevel = parseInt(e.target.value, 10);
+    updatePaletteTexture();
+  },
+  brushSize: e => brush.radius = parseInt(e.target.value, 10),
+  brushSmooth: e => brush.smooth = parseFloat(e.target.value),
+  exWidth: e => extrusionSettings.width = parseFloat(e.target.value),
+  exHeight: e => extrusionSettings.height = parseFloat(e.target.value),
+  exColor: e => {
+    const hex = e.target.value;
+    extrusionSettings.color = [ parseInt(hex.substr(1,2), 16)/255, parseInt(hex.substr(3,2), 16)/255, parseInt(hex.substr(5,2), 16)/255 ];
+  },
+}).forEach((entry) => {
+  const el = document.getElementById(entry[0])
+  entry[1]({ target: el });
+  el.addEventListener('input', e => {
+    entry[1](e);
+    saveMapToLocal();
+  });
 });
 
 // Canvas Events
@@ -315,6 +366,10 @@ canvas.addEventListener("pointerdown", (e) => {
   pointers.set(e.pointerId, { x: sx, y: sy });
 
   if (e.button === 2) { // Right-click center
+    if (appState.toolMode === 'extrude' && appState.activeExtrusion) {
+      finishExtrusion();
+      return;
+    }
     requestPick(sx, sy, (selected) => {
       if (selected.has) { 
         const [wx, wy] = tileCenterWorld(selected.x, selected.y);
@@ -336,8 +391,7 @@ canvas.addEventListener("pointerdown", (e) => {
   camera.isDragging = true;
   orbitDragX = 0;
 
-  requestPick(sx, sy);
-  setTimeout(() => {
+  requestPick(sx, sy, () => {
     if (!selected.has) return;
 
     if (appState.toolMode === 'build') {
@@ -384,8 +438,10 @@ canvas.addEventListener("pointerdown", (e) => {
       levelSel.startX = levelSel.endX = selected.x;
       levelSel.startY = levelSel.endY = selected.y;
       levelSel.base = elevations[selected.id];
+    } else if (appState.toolMode === 'extrude') {
+      appendExtrusionPoint(selected.x, selected.y);
     }
-  }, 30);
+  });
 
   if (pointers.size === 1) {
     dragPrimaryId = e.pointerId;
