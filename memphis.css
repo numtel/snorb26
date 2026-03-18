@@ -144,6 +144,21 @@ p { margin-bottom:15px; }
   margin: 0;
   box-shadow: 2px 2px 0px rgba(0,0,0,0.5);
   display: none; /* Controlled via JS or [open] */
+  max-height: calc(100vh - 140px); /* Leave a small gap for the top toolbar */
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+/* Ensure the pseudo-element border stays fixed while content scrolls */
+.menubar .menu::before {
+  position: sticky;
+  top: 0;
+  left: 0;
+  /* This ensures the border doesn't scroll away with the buttons */
+  pointer-events: none;
 }
 
 @media (max-width:480px) {
@@ -164,7 +179,7 @@ p { margin-bottom:15px; }
 
 /* Fix for nested inputs in menus */
 .menu .ctl { font-size: 12px; padding: 4px 10px; }
-.menubar .menu {border: 1px solid; border-color: var(--bevel1light) var(--bevel1dark) var(--bevel1dark) var(--bevel1light); border-radius:2px; padding:8px 2px 8px 2px;top:33px; left:0px; position:absolute; margin:0; width:fit-content; min-width:100px; z-index:999; overflow:hidden;}
+.menubar .menu {border: 1px solid; border-color: var(--bevel1light) var(--bevel1dark) var(--bevel1dark) var(--bevel1light); border-radius:2px; padding:8px 2px 8px 2px;width:fit-content; min-width:100px; z-index:999;}
 .menubar .menu::before {content:""; position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; border: 1px solid; border-color:  var(--bevel2light) var(--bevel2dark) var(--bevel2dark) var(--bevel2light); }
 .menubar .menu button:active { border:0;}
 .menubar .menu button:focus-visible { outline:0;}
