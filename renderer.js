@@ -19,10 +19,10 @@
   import * as shaders from './shaders.js';
 
   export let gl, canvas;
-  let program, waterProgram, buildProgram, pickProgram, skyProgram, extrudeProgram;
-  let vao, buildVao, buildInstanceBuf, extrudeVao, extrudeBuf;
+  let program, waterProgram, buildProgram, pickProgram, skyProgram, extrudeProgram, editorProgram;
+  let vao, buildVao, buildInstanceBuf, extrudeVao, extrudeBuf, editorVao, editorBuf;
   let elevTex, paletteTex, buildingTex;
-  let U, WU, BU, PU, SU, EU;
+  let U, WU, BU, PU, SU, EU, EDU;
   let buildInstanceCount = 0;
   export let extrudeVertCount = 0;
 
@@ -114,6 +114,7 @@
     pickProgram = linkProgram(shaders.vsPick, shaders.fsPick);
     skyProgram = linkProgram(shaders.vsSky, shaders.fsSky);
     extrudeProgram = linkProgram(shaders.vsExtrude, shaders.fsExtrude);
+    editorProgram = linkProgram(shaders.vsEditor, shaders.fsEditor);
 
     U = getUniforms(program, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_selectedId", "u_hasSelection", "u_outlinePx", "u_levelActive", "u_levelMin", "u_levelMax"]);
     WU = getUniforms(waterProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_waterLevel", "u_alpha", "u_time"]);
@@ -121,9 +122,16 @@
     PU = getUniforms(pickProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
     SU = getUniforms(skyProgram, ["u_tilt", "u_rotation", "u_pan"]);
     EU = getUniforms(extrudeProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
+    EDU = getUniforms(editorProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
 
     setupGeometry();
     setupTextures();
+
+    editorVao = gl.createVertexArray();
+    editorBuf = gl.createBuffer();
+    gl.bindVertexArray(editorVao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, editorBuf);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
   }
 
   function compileShader(type, src) {
@@ -574,6 +582,32 @@ export function draw(now) {
 
       gl.enable(gl.BLEND); gl.depthMask(true);
       gl.drawArrays(gl.TRIANGLES, 0, extrudeVertCount);
+  }
+
+  // DRAW EDITOR NODES (Over the extrusions)
+  if (appState.toolMode === 'edit-path' && appState.activeExtrusion && appState.activeExtrusion.points.length > 0) {
+      const pts = appState.activeExtrusion.points;
+      const arr = new Float32Array(pts.length * 2);
+      for (let i = 0; i < pts.length; i++) { arr[i*2] = pts[i].x; arr[i*2+1] = pts[i].y; }
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, editorBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, arr, gl.DYNAMIC_DRAW);
+
+      gl.useProgram(editorProgram);
+      gl.bindVertexArray(editorVao);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, elevTex); gl.uniform1i(EDU.elevTex, 0);
+
+      gl.uniform2f(EDU.viewSize, canvas.width, canvas.height); gl.uniform2f(EDU.pan, camera.panX, camera.panY);
+      gl.uniform1f(EDU.zoom, camera.zoom); gl.uniform1f(EDU.tileW, TILE_W); gl.uniform1f(EDU.tileH, TILE_H * camera.tilt);
+      gl.uniform1f(EDU.rotation, camera.rotation);
+
+      // Pass parallax scalar so nodes float properly matching perspective
+      const parallaxScalar = 0.5 + (0.5 / camera.tilt);
+      gl.uniform1f(EDU.elevStep, ELEV_STEP * parallaxScalar); gl.uniform1i(EDU.gridW, GRID_W); gl.uniform1i(EDU.gridH, GRID_H);
+
+      gl.disable(gl.DEPTH_TEST); // Draw perfectly on top of structures
+      gl.drawArrays(gl.POINTS, 0, pts.length);
+      gl.enable(gl.DEPTH_TEST);
   }
 
   // Water Program

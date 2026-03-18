@@ -292,3 +292,180 @@ export function appendExtrusionPoint(x, y) {
 export function finishExtrusion() {
     appState.activeExtrusion = null;
 }
+
+// --- Edit Path Math Utilities & State ---
+let lastNodeClickTime = 0;
+let lastClickedNodeIndex = -1;
+
+function distSq(p1, p2) { return (p1.x - p2.x)**2 + (p1.y - p2.y)**2; }
+function distToSegmentSq(p, v, w) {
+    const l2 = distSq(v, w);
+    if (l2 === 0) return distSq(p, v);
+    let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return distSq(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) });
+}
+
+export function editPathDown(tx, ty, button) {
+    const pt = {x: tx, y: ty};
+
+    // Find the closest existing node first (Magnetic grab)
+    let clickedNodeIdx = -1;
+    let minNodeDist = 4.0; // 2 tiles radius tolerance for grabbing a node
+
+    if (appState.activeExtrusion) {
+        const pts = appState.activeExtrusion.points;
+        for (let i = 0; i < pts.length; i++) {
+            const d = distSq(pt, pts[i]);
+            if (d < minNodeDist) {
+                minNodeDist = d;
+                clickedNodeIdx = i;
+            }
+        }
+    }
+
+    // Right Click: Deletion Logic (Desktop)
+    if (button === 2) {
+        if (appState.activeExtrusion && clickedNodeIdx !== -1) {
+            const pts = appState.activeExtrusion.points;
+            pts.splice(clickedNodeIdx, 1);
+            // Remove entire path if 1 or 0 nodes are left
+            if (pts.length < 2) {
+                const extIdx = extrusions.indexOf(appState.activeExtrusion);
+                if (extIdx > -1) extrusions.splice(extIdx, 1);
+                appState.activeExtrusion = null;
+            }
+            rebuildExtrusionBuffers();
+            saveMapToLocal();
+        }
+        return;
+    }
+
+    // Left Click / Tap: Interaction Logic
+    if (appState.activeExtrusion) {
+        const pts = appState.activeExtrusion.points;
+
+        // 1. Check if clicking an existing node (Prioritize this over edge insertion)
+        if (clickedNodeIdx !== -1) {
+            const now = Date.now();
+
+            // Double-tap deletion logic for Mobile (and Desktop alternative)
+            if (clickedNodeIdx === lastClickedNodeIndex && now - lastNodeClickTime < 400) {
+                pts.splice(clickedNodeIdx, 1);
+                if (pts.length < 2) {
+                    const extIdx = extrusions.indexOf(appState.activeExtrusion);
+                    if (extIdx > -1) extrusions.splice(extIdx, 1);
+                    appState.activeExtrusion = null;
+                }
+                lastClickedNodeIndex = -1; // reset
+                appState.editPathNodeIndex = -1;
+                rebuildExtrusionBuffers();
+                saveMapToLocal();
+                return;
+            }
+
+            // Normal selection for dragging
+            lastClickedNodeIndex = clickedNodeIdx;
+            lastNodeClickTime = now;
+            appState.editPathNodeIndex = clickedNodeIdx;
+            return;
+        }
+
+        // 2. Check if clicking on an edge (Insert new node)
+        let insertIdx = -1;
+        let minEdgeDist = 2.0; // Tolerance for edge insertion
+        for (let i = 0; i < pts.length - 1; i++) {
+            const d = distToSegmentSq(pt, pts[i], pts[i+1]);
+            if (d < minEdgeDist) {
+                minEdgeDist = d;
+                insertIdx = i + 1;
+            }
+        }
+
+        if (insertIdx !== -1) {
+            pts.splice(insertIdx, 0, {x: tx, y: ty});
+            appState.editPathNodeIndex = insertIdx;
+
+            // Register this as the last clicked node so rapid clicking doesn't accidentally delete it
+            lastClickedNodeIndex = insertIdx;
+            lastNodeClickTime = Date.now();
+
+            rebuildExtrusionBuffers();
+            return;
+        }
+
+        // 3. Check if clicking near the absolute start/end to extend
+        if (pts.length > 0) {
+            const dStart = distSq(pt, pts[0]);
+            const dEnd = distSq(pt, pts[pts.length - 1]);
+            if (dStart <= 16 || dEnd <= 16) { // 4 tiles radius limit to append
+                if (dStart < dEnd) {
+                    pts.unshift({x: tx, y: ty});
+                    appState.editPathNodeIndex = 0;
+                } else {
+                    pts.push({x: tx, y: ty});
+                    appState.editPathNodeIndex = pts.length - 1;
+                }
+                rebuildExtrusionBuffers();
+                return;
+            }
+        }
+    }
+
+    // 4. Clicked away from active path. Try selecting a new path!
+    let closestExt = null;
+    let closestDist = 4.0;
+    for (const ext of extrusions) {
+        for (let i = 0; i < ext.points.length - 1; i++) {
+            const d = distToSegmentSq(pt, ext.points[i], ext.points[i+1]);
+            if (d < closestDist) {
+                closestDist = d;
+                closestExt = ext;
+            }
+        }
+    }
+
+    appState.activeExtrusion = closestExt;
+    appState.editPathNodeIndex = -1;
+    lastClickedNodeIndex = -1;
+
+    if (closestExt) {
+        syncExtrusionUI(closestExt);
+    }
+}
+
+export function editPathDrag(tx, ty) {
+    if (appState.activeExtrusion && appState.editPathNodeIndex >= 0) {
+        const pts = appState.activeExtrusion.points;
+        const idx = appState.editPathNodeIndex;
+        if (pts[idx].x !== tx || pts[idx].y !== ty) {
+            pts[idx].x = tx;
+            pts[idx].y = ty;
+            rebuildExtrusionBuffers();
+        }
+    }
+}
+
+export function syncExtrusionUI(ext) {
+    if (!ext) return;
+
+    // 1. Update internal state
+    extrusionSettings.width = ext.width;
+    extrusionSettings.height = ext.height;
+    extrusionSettings.color = [...ext.color];
+
+    // 2. Update DOM elements
+    const wEl = document.getElementById('exWidth');
+    const hEl = document.getElementById('exHeight');
+    const cEl = document.getElementById('exColor');
+
+    if (wEl) wEl.value = ext.width;
+    if (hEl) hEl.value = ext.height;
+    if (cEl) {
+        // Convert Float RGB to Hex for the color input
+        const r = Math.round(ext.color[0] * 255).toString(16).padStart(2, '0');
+        const g = Math.round(ext.color[1] * 255).toString(16).padStart(2, '0');
+        const b = Math.round(ext.color[2] * 255).toString(16).padStart(2, '0');
+        cEl.value = `#${r}${g}${b}`;
+    }
+}

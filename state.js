@@ -73,6 +73,7 @@ export const appState = {
   toolMode: 'pan',
   showGrid: true,
   activeExtrusion: null,
+  editPathNodeIndex: -1, // Tracks the currently dragged node
 };
 
 // Helpers

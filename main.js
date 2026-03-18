@@ -43,6 +43,9 @@ import {
   setTileInCenter,
   appendExtrusionPoint,
   finishExtrusion,
+  editPathDown,
+  editPathDrag,
+  syncExtrusionUI,
 } from './tools.js';
 
 // Setup Map & DOM Elements
@@ -236,7 +239,10 @@ function menuClicks(command, tool) {
   if(tool) {
     syncBrushFromUI();
     appState.toolMode = tool;
-    if (tool !== 'extrude' && appState.activeExtrusion) finishExtrusion();
+    if (tool !== 'extrude' && tool !== 'edit-path' && appState.activeExtrusion) finishExtrusion();
+    if ((tool === 'edit-path' || tool === 'extrude') && appState.activeExtrusion) {
+        syncExtrusionUI(appState.activeExtrusion);
+    }
     document.querySelectorAll('button[data-tool]').forEach(b =>
       b.classList.toggle('active', b.dataset.tool === tool)
     );
@@ -349,6 +355,14 @@ Object.entries({
   entry[1]({ target: el });
   el.addEventListener('input', e => {
     entry[1](e);
+    if (['exWidth', 'exHeight', 'exColor'].includes(entry[0]) && appState.activeExtrusion) {
+      if (entry[0] === 'exWidth') appState.activeExtrusion.width = extrusionSettings.width;
+      if (entry[0] === 'exHeight') appState.activeExtrusion.height = extrusionSettings.height;
+      if (entry[0] === 'exColor') appState.activeExtrusion.color = [...extrusionSettings.color];
+
+      // Instantly update the 3D geometry
+      rebuildExtrusionBuffers();
+    }
     saveMapToLocal();
   });
 });
@@ -368,6 +382,13 @@ canvas.addEventListener("pointerdown", (e) => {
   if (e.button === 2) { // Right-click center
     if (appState.toolMode === 'extrude' && appState.activeExtrusion) {
       finishExtrusion();
+      return;
+    }
+    // Handle Edit Path Right Clicks (Deletions)
+    if (appState.toolMode === 'edit-path') {
+      requestPick(sx, sy, (selected) => {
+        if (selected.has) editPathDown(selected.x, selected.y, 2);
+      });
       return;
     }
     requestPick(sx, sy, (selected) => {
@@ -440,6 +461,13 @@ canvas.addEventListener("pointerdown", (e) => {
       levelSel.base = elevations[selected.id];
     } else if (appState.toolMode === 'extrude') {
       appendExtrusionPoint(selected.x, selected.y);
+    } else if (appState.toolMode === 'edit-path') {
+      // Begin Edit Action Sequence
+      editPathDown(selected.x, selected.y, 0);
+      paintStroke.active = true; // Use paint stroke to hijack dragging
+      paintStroke.pointerId = e.pointerId;
+      paintStroke.lastX = selected.x;
+      paintStroke.lastY = selected.y;
     }
   });
 
@@ -490,6 +518,8 @@ canvas.addEventListener("pointermove", (e) => {
     if (selected.has && (selected.x !== paintStroke.lastX || selected.y !== paintStroke.lastY)) {
       if (appState.toolMode === 'demolish') {
         removeBuildingAtSelected(selected.x, selected.y);
+      } else if (appState.toolMode === 'edit-path') {
+        editPathDrag(selected.x, selected.y);
       } else if (appState.toolMode === 'forest') {
         const url = document.getElementById('customUrl').value.trim();
         brushForest(selected.x, selected.y, url);
@@ -556,7 +586,15 @@ canvas.addEventListener("pointermove", (e) => {
 
 const pointerUpCancel = (e) => {
   if (levelSel.active && levelSel.pointerId === e.pointerId) commitLevelSelection();
-  if (paintStroke.active && paintStroke.pointerId === e.pointerId) { brushSmoothTouched(); paintStroke.active = false; paintStroke.touched.clear(); }
+  if (paintStroke.active && paintStroke.pointerId === e.pointerId) {
+    // Clear out edit state when releasing the mouse
+    if (appState.toolMode === 'edit-path') {
+      appState.editPathNodeIndex = -1;
+    }
+    brushSmoothTouched();
+    paintStroke.active = false;
+    paintStroke.touched.clear();
+  }
   saveMapToLocal();
   pointers.delete(e.pointerId); dragPrimaryId = pointers.size === 1 ? Array.from(pointers.keys())[0] : null;
 };
