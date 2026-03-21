@@ -15,16 +15,18 @@
     customBuildingRegistry,
     mapSettings,
     extrusions,
+    cubes,
   } from './state.js';
   import * as shaders from './shaders.js';
 
   export let gl, canvas;
   let program, waterProgram, buildProgram, pickProgram, skyProgram, extrudeProgram, editorProgram;
-  let vao, buildVao, buildInstanceBuf, extrudeVao, extrudeBuf, editorVao, editorBuf;
+  let vao, buildVao, buildInstanceBuf, extrudeVao, extrudeBuf, editorVao, editorBuf, cubeVao, cubeBuf;
   let elevTex, paletteTex, buildingTex;
   let U, WU, BU, PU, SU, EU, EDU;
   let buildInstanceCount = 0;
   export let extrudeVertCount = 0;
+  export let cubeVertCount = 0;
 
   export const buildBuffers = new Map();
   const typeBuffers = new Map();
@@ -182,6 +184,16 @@
     extrudeBuf = gl.createBuffer();
     gl.bindVertexArray(extrudeVao);
     gl.bindBuffer(gl.ARRAY_BUFFER, extrudeBuf);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 36, 0);
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 36, 8);
+    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 36, 12);
+    gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 36, 24);
+
+    // Set up Cube geometry buffer (matches Extrude layout)
+    cubeVao = gl.createVertexArray();
+    cubeBuf = gl.createBuffer();
+    gl.bindVertexArray(cubeVao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeBuf);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 36, 0);
     gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 36, 8);
     gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 36, 12);
@@ -610,6 +622,21 @@ export function draw(now) {
       gl.enable(gl.DEPTH_TEST);
   }
 
+  // DRAW CUBES
+  if (cubeVertCount > 0) {
+      gl.useProgram(extrudeProgram);
+      gl.bindVertexArray(cubeVao);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, elevTex); gl.uniform1i(EU.elevTex, 0);
+
+      gl.uniform2f(EU.viewSize, canvas.width, canvas.height); gl.uniform2f(EU.pan, camera.panX, camera.panY);
+      gl.uniform1f(EU.zoom, camera.zoom); gl.uniform1f(EU.tileW, TILE_W); gl.uniform1f(EU.tileH, TILE_H * camera.tilt);
+      gl.uniform1f(EU.rotation, camera.rotation);
+      gl.uniform1f(EU.elevStep, ELEV_STEP * parallaxScalar); gl.uniform1i(EU.gridW, GRID_W); gl.uniform1i(EU.gridH, GRID_H);
+
+      gl.enable(gl.BLEND); gl.depthMask(true);
+      gl.drawArrays(gl.TRIANGLES, 0, cubeVertCount);
+  }
+
   // Water Program
   gl.useProgram(waterProgram);
   gl.bindVertexArray(vao);
@@ -627,4 +654,65 @@ export function draw(now) {
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, GRID_W * GRID_H);
   gl.depthMask(true); gl.disable(gl.BLEND);
 
+}
+
+export function rebuildCubeBuffers() {
+    const verts = [];
+    const pushVert = (x, y, zOffset, nx, ny, nz, r, g, b) => verts.push(x, y, zOffset, nx, ny, nz, r, g, b);
+
+    for (const cube of cubes) {
+        const hw = cube.w / 2;
+        const hl = (cube.l !== undefined ? cube.l : cube.w) / 2; // Support rectangular length
+        const h = cube.h;
+        const cx = cube.x, cy = cube.y;
+        const c = cube.c;
+
+        // Top Face
+        pushVert(cx-hw, cy-hl, h,  0,0,1,  c[0], c[1], c[2]);
+        pushVert(cx+hw, cy-hl, h,  0,0,1,  c[0], c[1], c[2]);
+        pushVert(cx-hw, cy+hl, h,  0,0,1,  c[0], c[1], c[2]);
+        pushVert(cx+hw, cy-hl, h,  0,0,1,  c[0], c[1], c[2]);
+        pushVert(cx+hw, cy+hl, h,  0,0,1,  c[0], c[1], c[2]);
+        pushVert(cx-hw, cy+hl, h,  0,0,1,  c[0], c[1], c[2]);
+
+        // Left Face
+        const lc = [c[0]*0.8, c[1]*0.8, c[2]*0.8];
+        pushVert(cx-hw, cy-hl, 0, -1,0,0, lc[0], lc[1], lc[2]);
+        pushVert(cx-hw, cy+hl, 0, -1,0,0, lc[0], lc[1], lc[2]);
+        pushVert(cx-hw, cy-hl, h, -1,0,0, lc[0], lc[1], lc[2]);
+        pushVert(cx-hw, cy+hl, 0, -1,0,0, lc[0], lc[1], lc[2]);
+        pushVert(cx-hw, cy+hl, h, -1,0,0, lc[0], lc[1], lc[2]);
+        pushVert(cx-hw, cy-hl, h, -1,0,0, lc[0], lc[1], lc[2]);
+
+        // Right Face
+        const rc = [c[0]*0.6, c[1]*0.6, c[2]*0.6];
+        pushVert(cx+hw, cy+hl, 0,  1,0,0, rc[0], rc[1], rc[2]);
+        pushVert(cx+hw, cy-hl, 0,  1,0,0, rc[0], rc[1], rc[2]);
+        pushVert(cx+hw, cy+hl, h,  1,0,0, rc[0], rc[1], rc[2]);
+        pushVert(cx+hw, cy-hl, 0,  1,0,0, rc[0], rc[1], rc[2]);
+        pushVert(cx+hw, cy-hl, h,  1,0,0, rc[0], rc[1], rc[2]);
+        pushVert(cx+hw, cy+hl, h,  1,0,0, rc[0], rc[1], rc[2]);
+
+        // Front Face
+        const fc = [c[0]*0.7, c[1]*0.7, c[2]*0.7];
+        pushVert(cx-hw, cy+hl, 0,  0,1,0, fc[0], fc[1], fc[2]);
+        pushVert(cx+hw, cy+hl, 0,  0,1,0, fc[0], fc[1], fc[2]);
+        pushVert(cx-hw, cy+hl, h,  0,1,0, fc[0], fc[1], fc[2]);
+        pushVert(cx+hw, cy+hl, 0,  0,1,0, fc[0], fc[1], fc[2]);
+        pushVert(cx+hw, cy+hl, h,  0,1,0, fc[0], fc[1], fc[2]);
+        pushVert(cx-hw, cy+hl, h,  0,1,0, fc[0], fc[1], fc[2]);
+
+        // Back Face
+        const bc = [c[0]*0.9, c[1]*0.9, c[2]*0.9];
+        pushVert(cx+hw, cy-hl, 0,  0,-1,0, bc[0], bc[1], bc[2]);
+        pushVert(cx-hw, cy-hl, 0,  0,-1,0, bc[0], bc[1], bc[2]);
+        pushVert(cx+hw, cy-hl, h,  0,-1,0, bc[0], bc[1], bc[2]);
+        pushVert(cx-hw, cy-hl, 0,  0,-1,0, bc[0], bc[1], bc[2]);
+        pushVert(cx-hw, cy-hl, h,  0,-1,0, bc[0], bc[1], bc[2]);
+        pushVert(cx+hw, cy-hl, h,  0,-1,0, bc[0], bc[1], bc[2]);
+    }
+
+    cubeVertCount = verts.length / 9;
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.DYNAMIC_DRAW);
 }

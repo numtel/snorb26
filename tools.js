@@ -18,6 +18,8 @@ import {
   extrusions,
   extrusionSettings,
   appState,
+  cubes,
+  cubeSettings,
 } from './state.js';
 import {
   canvas,
@@ -26,6 +28,7 @@ import {
   requestPick,
   loadCustomTexture,
   rebuildExtrusionBuffers,
+  rebuildCubeBuffers,
 } from './renderer.js';
 import { saveMapToLocal } from './state.js';
 
@@ -467,5 +470,38 @@ export function syncExtrusionUI(ext) {
         const g = Math.round(ext.color[1] * 255).toString(16).padStart(2, '0');
         const b = Math.round(ext.color[2] * 255).toString(16).padStart(2, '0');
         cEl.value = `#${r}${g}${b}`;
+    }
+}
+
+export function placeCubeAt(x, y) {
+    if (!selected.has) return;
+    cubes.push({
+        x, y,
+        w: cubeSettings.width,
+        l: cubeSettings.length,
+        h: cubeSettings.height,
+        c: [...cubeSettings.color]
+    });
+    rebuildCubeBuffers();
+    saveMapToLocal();
+}
+
+export function removeCubeAt(x, y) {
+    let closestIdx = -1;
+    for (let i = 0; i < cubes.length; i++) {
+        const c = cubes[i];
+        const hw = c.w / 2;
+        const hl = c.l / 2;
+        // Basic AABB bounds checking to allow clicking anywhere on the cube's footprint
+        if (x >= c.x - hw && x <= c.x + hw && y >= c.y - hl && y <= c.y + hl) {
+            closestIdx = i;
+            break;
+        }
+    }
+
+    if (closestIdx !== -1) {
+        cubes.splice(closestIdx, 1);
+        rebuildCubeBuffers();
+        saveMapToLocal();
     }
 }

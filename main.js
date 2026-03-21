@@ -19,6 +19,7 @@ import {
   elevations,
   loadMapFromLocal,
   resizeMapState,
+  cubeSettings,
 } from './state.js';
 import {
   initWebGL,
@@ -46,6 +47,8 @@ import {
   editPathDown,
   editPathDrag,
   syncExtrusionUI,
+  placeCubeAt,
+  removeCubeAt,
 } from './tools.js';
 
 // Setup Map & DOM Elements
@@ -350,6 +353,13 @@ Object.entries({
     const hex = e.target.value;
     extrusionSettings.color = [ parseInt(hex.substr(1,2), 16)/255, parseInt(hex.substr(3,2), 16)/255, parseInt(hex.substr(5,2), 16)/255 ];
   },
+  cbWidth: e => cubeSettings.width = parseFloat(e.target.value),
+  cbLength: e => cubeSettings.length = parseFloat(e.target.value),
+  cbHeight: e => cubeSettings.height = parseFloat(e.target.value),
+  cbColor: e => {
+    const hex = e.target.value;
+    cubeSettings.color = [ parseInt(hex.substr(1,2), 16)/255, parseInt(hex.substr(3,2), 16)/255, parseInt(hex.substr(5,2), 16)/255 ];
+  },
 }).forEach((entry) => {
   const el = document.getElementById(entry[0])
   entry[1]({ target: el });
@@ -388,6 +398,12 @@ canvas.addEventListener("pointerdown", (e) => {
     if (appState.toolMode === 'edit-path') {
       requestPick(sx, sy, (selected) => {
         if (selected.has) editPathDown(selected.x, selected.y, 2);
+      });
+      return;
+    }
+    if (appState.toolMode === 'cube') {
+      requestPick(sx, sy, (selected) => {
+        if (selected.has) removeCubeAt(selected.x, selected.y);
       });
       return;
     }
@@ -468,6 +484,10 @@ canvas.addEventListener("pointerdown", (e) => {
       paintStroke.pointerId = e.pointerId;
       paintStroke.lastX = selected.x;
       paintStroke.lastY = selected.y;
+    } else if (appState.toolMode === 'cube') {
+      placeCubeAt(selected.x, selected.y);
+    } else if (appState.toolMode === 'remove-cube') {
+      removeCubeAt(selected.x, selected.y);
     }
   });
 

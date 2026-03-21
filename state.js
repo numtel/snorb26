@@ -4,6 +4,7 @@ import {
   loadCustomTexture,
   updatePaletteTexture,
   rebuildExtrusionBuffers,
+  rebuildCubeBuffers,
 } from './renderer.js';
 import { updateViewMenuUI } from './main.js';
 export let GRID_W = 256;
@@ -18,6 +19,9 @@ export let buildingAt = new Uint8Array(GRID_W * GRID_H);
 export const customBuildingRegistry = [];
 export const extrusions = [];
 export const extrusionSettings = { width: 0.5, height: 2.0, color: [0.5, 0.5, 0.5] };
+
+export const cubes = [];
+export const cubeSettings = { width: 4.0, length: 4.0, height: 10.0, color: [1.0, 0.26, 0.26] };
 
 export const SC3K_COLOR_STOPS = [
   { t:   0, c:[  0/255,  20/255,  60/255] },
@@ -123,6 +127,7 @@ export function serializeMap() {
     buildingAt: Array.from(buildingAt),
     customBuildingRegistry: Array.from(customBuildingRegistry),
     extrusions,
+    cubes,
     camera: {
       panX: camera.targetPanX,
       panY: camera.targetPanY,
@@ -155,6 +160,7 @@ export function deserializeMap(data) {
       extrusions.length = 0;
       extrusions.push(...data.extrusions);
     }
+    if (data.cubes) { cubes.length = 0; cubes.push(...data.cubes); }
 
     if (data.camera) {
       camera.panX = camera.targetPanX = data.camera.panX;
@@ -185,6 +191,7 @@ export function deserializeMap(data) {
     }
     uploadElevations();
     rebuildExtrusionBuffers();
+    rebuildCubeBuffers();
     rebuildBuildingInstances();
     return true;
   } catch (e) {
@@ -199,6 +206,7 @@ export function resizeMapState(width, height) {
   elevations = new Uint8Array(GRID_W * GRID_H);
   buildingAt = new Uint8Array(GRID_W * GRID_H);
   extrusions.length = 0;
+  cubes.length = 0;
   appState.activeExtrusion = null;
 }
 
