@@ -284,6 +284,7 @@ function menuClicks(command, tool) {
         uploadElevations();
         rebuildBuildingInstances();
         rebuildExtrusionBuffers();
+        rebuildCubeBuffers();
         saveMapToLocal();
       }
       break;
