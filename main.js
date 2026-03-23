@@ -19,6 +19,7 @@ import {
   elevations,
   loadMapFromLocal,
   resizeMapState,
+  cubes,
   cubeSettings,
 } from './state.js';
 import {
@@ -31,6 +32,7 @@ import {
   updatePaletteTexture,
   rebuildBuildingInstances,
   rebuildExtrusionBuffers,
+  rebuildCubeBuffers,
 } from './renderer.js';
 import {
   seedDemo,
@@ -49,6 +51,8 @@ import {
   syncExtrusionUI,
   placeCubeAt,
   removeCubeAt,
+  editCubeDown,
+  editCubeDrag,
 } from './tools.js';
 
 // Setup Map & DOM Elements
@@ -356,6 +360,7 @@ Object.entries({
   cbWidth: e => cubeSettings.width = parseFloat(e.target.value),
   cbLength: e => cubeSettings.length = parseFloat(e.target.value),
   cbHeight: e => cubeSettings.height = parseFloat(e.target.value),
+  cbRotation: e => cubeSettings.rotation = parseFloat(e.target.value),
   cbColor: e => {
     const hex = e.target.value;
     cubeSettings.color = [ parseInt(hex.substr(1,2), 16)/255, parseInt(hex.substr(3,2), 16)/255, parseInt(hex.substr(5,2), 16)/255 ];
@@ -365,6 +370,15 @@ Object.entries({
   entry[1]({ target: el });
   el.addEventListener('input', e => {
     entry[1](e);
+    if (['cbWidth', 'cbLength', 'cbHeight', 'cbRotation', 'cbColor'].includes(entry[0]) && appState.toolMode === 'edit-cube' && appState.activeCubeIndex >= 0) {
+        const c = cubes[appState.activeCubeIndex];
+        if (entry[0] === 'cbWidth') c.w = cubeSettings.width;
+        if (entry[0] === 'cbLength') c.l = cubeSettings.length;
+        if (entry[0] === 'cbHeight') c.h = cubeSettings.height;
+        if (entry[0] === 'cbRotation') c.r = cubeSettings.rotation;
+        if (entry[0] === 'cbColor') c.c = [...cubeSettings.color];
+        rebuildCubeBuffers();
+    }
     if (['exWidth', 'exHeight', 'exColor'].includes(entry[0]) && appState.activeExtrusion) {
       if (entry[0] === 'exWidth') appState.activeExtrusion.width = extrusionSettings.width;
       if (entry[0] === 'exHeight') appState.activeExtrusion.height = extrusionSettings.height;
@@ -486,6 +500,10 @@ canvas.addEventListener("pointerdown", (e) => {
       paintStroke.lastY = selected.y;
     } else if (appState.toolMode === 'cube') {
       placeCubeAt(selected.x, selected.y);
+    } else if (appState.toolMode === 'edit-cube') {
+      editCubeDown(selected.x, selected.y, e.button);
+      paintStroke.active = true;
+      paintStroke.pointerId = e.pointerId;
     } else if (appState.toolMode === 'remove-cube') {
       removeCubeAt(selected.x, selected.y);
     }
@@ -540,6 +558,8 @@ canvas.addEventListener("pointermove", (e) => {
         removeBuildingAtSelected(selected.x, selected.y);
       } else if (appState.toolMode === 'edit-path') {
         editPathDrag(selected.x, selected.y);
+      } else if (appState.toolMode === 'edit-cube') {
+        editCubeDrag(selected.x, selected.y);
       } else if (appState.toolMode === 'forest') {
         const url = document.getElementById('customUrl').value.trim();
         brushForest(selected.x, selected.y, url);

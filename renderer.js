@@ -637,6 +637,36 @@ export function draw(now) {
       gl.drawArrays(gl.TRIANGLES, 0, cubeVertCount);
   }
 
+  // DRAW CUBE EDITOR NODES
+  if (appState.toolMode === 'edit-cube' && appState.activeCubeIndex >= 0 && cubes[appState.activeCubeIndex]) {
+      const c = cubes[appState.activeCubeIndex];
+      const hw = c.w / 2, hl = (c.l !== undefined ? c.l : c.w) / 2;
+      const c_rot = Math.cos(c.r || 0), s_rot = Math.sin(c.r || 0);
+      const rot = (lx, ly) => [c.x + lx*c_rot - ly*s_rot, c.y + lx*s_rot + ly*c_rot];
+
+      const pts = [ rot(0,0), rot(-hw, -hl), rot(hw, -hl), rot(-hw, hl), rot(hw, hl) ];
+      const arr = new Float32Array(10);
+      for (let i = 0; i < 5; i++) { arr[i*2] = pts[i][0]; arr[i*2+1] = pts[i][1]; }
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, editorBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, arr, gl.DYNAMIC_DRAW);
+
+      gl.useProgram(editorProgram);
+      gl.bindVertexArray(editorVao);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, elevTex); gl.uniform1i(EDU.elevTex, 0);
+
+      gl.uniform2f(EDU.viewSize, canvas.width, canvas.height); gl.uniform2f(EDU.pan, camera.panX, camera.panY);
+      gl.uniform1f(EDU.zoom, camera.zoom); gl.uniform1f(EDU.tileW, TILE_W); gl.uniform1f(EDU.tileH, TILE_H * camera.tilt);
+      gl.uniform1f(EDU.rotation, camera.rotation);
+
+      const parallaxScalar = 0.5 + (0.5 / camera.tilt);
+      gl.uniform1f(EDU.elevStep, ELEV_STEP * parallaxScalar); gl.uniform1i(EDU.gridW, GRID_W); gl.uniform1i(EDU.gridH, GRID_H);
+
+      gl.disable(gl.DEPTH_TEST);
+      gl.drawArrays(gl.POINTS, 0, 5);
+      gl.enable(gl.DEPTH_TEST);
+  }
+
   // Water Program
   gl.useProgram(waterProgram);
   gl.bindVertexArray(vao);
@@ -662,54 +692,79 @@ export function rebuildCubeBuffers() {
 
     for (const cube of cubes) {
         const hw = cube.w / 2;
-        const hl = (cube.l !== undefined ? cube.l : cube.w) / 2; // Support rectangular length
+        const hl = (cube.l !== undefined ? cube.l : cube.w) / 2;
         const h = cube.h;
         const cx = cube.x, cy = cube.y;
         const c = cube.c;
 
+        const c_rot = Math.cos(cube.r || 0);
+        const s_rot = Math.sin(cube.r || 0);
+
+        // Helper to rotate local vertex coordinates
+        const rot = (lx, ly) => ({
+            x: cx + lx * c_rot - ly * s_rot,
+            y: cy + lx * s_rot + ly * c_rot
+        });
+
+        // Helper to rotate normals
+        const rotN = (nx, ny) => ({
+            x: nx * c_rot - ny * s_rot,
+            y: nx * s_rot + ny * c_rot
+        });
+
+        // 4 Corners in world space
+        const p00 = rot(-hw, -hl); // Top Left
+        const p10 = rot(hw, -hl);  // Top Right
+        const p01 = rot(-hw, hl);  // Bottom Left
+        const p11 = rot(hw, hl);   // Bottom Right
+
         // Top Face
-        pushVert(cx-hw, cy-hl, h,  0,0,1,  c[0], c[1], c[2]);
-        pushVert(cx+hw, cy-hl, h,  0,0,1,  c[0], c[1], c[2]);
-        pushVert(cx-hw, cy+hl, h,  0,0,1,  c[0], c[1], c[2]);
-        pushVert(cx+hw, cy-hl, h,  0,0,1,  c[0], c[1], c[2]);
-        pushVert(cx+hw, cy+hl, h,  0,0,1,  c[0], c[1], c[2]);
-        pushVert(cx-hw, cy+hl, h,  0,0,1,  c[0], c[1], c[2]);
+        pushVert(p00.x, p00.y, h,  0,0,1,  c[0], c[1], c[2]);
+        pushVert(p10.x, p10.y, h,  0,0,1,  c[0], c[1], c[2]);
+        pushVert(p01.x, p01.y, h,  0,0,1,  c[0], c[1], c[2]);
+        pushVert(p10.x, p10.y, h,  0,0,1,  c[0], c[1], c[2]);
+        pushVert(p11.x, p11.y, h,  0,0,1,  c[0], c[1], c[2]);
+        pushVert(p01.x, p01.y, h,  0,0,1,  c[0], c[1], c[2]);
 
-        // Left Face
+        // Left Face (Normal: -1, 0)
+        const nl = rotN(-1, 0);
         const lc = [c[0]*0.8, c[1]*0.8, c[2]*0.8];
-        pushVert(cx-hw, cy-hl, 0, -1,0,0, lc[0], lc[1], lc[2]);
-        pushVert(cx-hw, cy+hl, 0, -1,0,0, lc[0], lc[1], lc[2]);
-        pushVert(cx-hw, cy-hl, h, -1,0,0, lc[0], lc[1], lc[2]);
-        pushVert(cx-hw, cy+hl, 0, -1,0,0, lc[0], lc[1], lc[2]);
-        pushVert(cx-hw, cy+hl, h, -1,0,0, lc[0], lc[1], lc[2]);
-        pushVert(cx-hw, cy-hl, h, -1,0,0, lc[0], lc[1], lc[2]);
+        pushVert(p00.x, p00.y, 0, nl.x, nl.y, 0, lc[0], lc[1], lc[2]);
+        pushVert(p01.x, p01.y, 0, nl.x, nl.y, 0, lc[0], lc[1], lc[2]);
+        pushVert(p00.x, p00.y, h, nl.x, nl.y, 0, lc[0], lc[1], lc[2]);
+        pushVert(p01.x, p01.y, 0, nl.x, nl.y, 0, lc[0], lc[1], lc[2]);
+        pushVert(p01.x, p01.y, h, nl.x, nl.y, 0, lc[0], lc[1], lc[2]);
+        pushVert(p00.x, p00.y, h, nl.x, nl.y, 0, lc[0], lc[1], lc[2]);
 
-        // Right Face
+        // Right Face (Normal: 1, 0)
+        const nr = rotN(1, 0);
         const rc = [c[0]*0.6, c[1]*0.6, c[2]*0.6];
-        pushVert(cx+hw, cy+hl, 0,  1,0,0, rc[0], rc[1], rc[2]);
-        pushVert(cx+hw, cy-hl, 0,  1,0,0, rc[0], rc[1], rc[2]);
-        pushVert(cx+hw, cy+hl, h,  1,0,0, rc[0], rc[1], rc[2]);
-        pushVert(cx+hw, cy-hl, 0,  1,0,0, rc[0], rc[1], rc[2]);
-        pushVert(cx+hw, cy-hl, h,  1,0,0, rc[0], rc[1], rc[2]);
-        pushVert(cx+hw, cy+hl, h,  1,0,0, rc[0], rc[1], rc[2]);
+        pushVert(p11.x, p11.y, 0, nr.x, nr.y, 0, rc[0], rc[1], rc[2]);
+        pushVert(p10.x, p10.y, 0, nr.x, nr.y, 0, rc[0], rc[1], rc[2]);
+        pushVert(p11.x, p11.y, h, nr.x, nr.y, 0, rc[0], rc[1], rc[2]);
+        pushVert(p10.x, p10.y, 0, nr.x, nr.y, 0, rc[0], rc[1], rc[2]);
+        pushVert(p10.x, p10.y, h, nr.x, nr.y, 0, rc[0], rc[1], rc[2]);
+        pushVert(p11.x, p11.y, h, nr.x, nr.y, 0, rc[0], rc[1], rc[2]);
 
-        // Front Face
+        // Front Face (Normal: 0, 1)
+        const nf = rotN(0, 1);
         const fc = [c[0]*0.7, c[1]*0.7, c[2]*0.7];
-        pushVert(cx-hw, cy+hl, 0,  0,1,0, fc[0], fc[1], fc[2]);
-        pushVert(cx+hw, cy+hl, 0,  0,1,0, fc[0], fc[1], fc[2]);
-        pushVert(cx-hw, cy+hl, h,  0,1,0, fc[0], fc[1], fc[2]);
-        pushVert(cx+hw, cy+hl, 0,  0,1,0, fc[0], fc[1], fc[2]);
-        pushVert(cx+hw, cy+hl, h,  0,1,0, fc[0], fc[1], fc[2]);
-        pushVert(cx-hw, cy+hl, h,  0,1,0, fc[0], fc[1], fc[2]);
+        pushVert(p01.x, p01.y, 0, nf.x, nf.y, 0, fc[0], fc[1], fc[2]);
+        pushVert(p11.x, p11.y, 0, nf.x, nf.y, 0, fc[0], fc[1], fc[2]);
+        pushVert(p01.x, p01.y, h, nf.x, nf.y, 0, fc[0], fc[1], fc[2]);
+        pushVert(p11.x, p11.y, 0, nf.x, nf.y, 0, fc[0], fc[1], fc[2]);
+        pushVert(p11.x, p11.y, h, nf.x, nf.y, 0, fc[0], fc[1], fc[2]);
+        pushVert(p01.x, p01.y, h, nf.x, nf.y, 0, fc[0], fc[1], fc[2]);
 
-        // Back Face
+        // Back Face (Normal: 0, -1)
+        const nb = rotN(0, -1);
         const bc = [c[0]*0.9, c[1]*0.9, c[2]*0.9];
-        pushVert(cx+hw, cy-hl, 0,  0,-1,0, bc[0], bc[1], bc[2]);
-        pushVert(cx-hw, cy-hl, 0,  0,-1,0, bc[0], bc[1], bc[2]);
-        pushVert(cx+hw, cy-hl, h,  0,-1,0, bc[0], bc[1], bc[2]);
-        pushVert(cx-hw, cy-hl, 0,  0,-1,0, bc[0], bc[1], bc[2]);
-        pushVert(cx-hw, cy-hl, h,  0,-1,0, bc[0], bc[1], bc[2]);
-        pushVert(cx+hw, cy-hl, h,  0,-1,0, bc[0], bc[1], bc[2]);
+        pushVert(p10.x, p10.y, 0, nb.x, nb.y, 0, bc[0], bc[1], bc[2]);
+        pushVert(p00.x, p00.y, 0, nb.x, nb.y, 0, bc[0], bc[1], bc[2]);
+        pushVert(p10.x, p10.y, h, nb.x, nb.y, 0, bc[0], bc[1], bc[2]);
+        pushVert(p00.x, p00.y, 0, nb.x, nb.y, 0, bc[0], bc[1], bc[2]);
+        pushVert(p00.x, p00.y, h, nb.x, nb.y, 0, bc[0], bc[1], bc[2]);
+        pushVert(p10.x, p10.y, h, nb.x, nb.y, 0, bc[0], bc[1], bc[2]);
     }
 
     cubeVertCount = verts.length / 9;

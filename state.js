@@ -21,7 +21,7 @@ export const extrusions = [];
 export const extrusionSettings = { width: 0.5, height: 2.0, color: [0.5, 0.5, 0.5] };
 
 export const cubes = [];
-export const cubeSettings = { width: 4.0, length: 4.0, height: 10.0, color: [1.0, 0.26, 0.26] };
+export const cubeSettings = { width: 4.0, length: 4.0, height: 10.0, rotation: 0.0, color: [1.0, 0.26, 0.26] };
 
 export const SC3K_COLOR_STOPS = [
   { t:   0, c:[  0/255,  20/255,  60/255] },
@@ -78,6 +78,8 @@ export const appState = {
   showGrid: true,
   activeExtrusion: null,
   editPathNodeIndex: -1, // Tracks the currently dragged node
+  activeCubeIndex: -1,
+  activeCubeHandle: -1, // 0: center, 1-4: corners
 };
 
 // Helpers
