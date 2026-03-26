@@ -118,7 +118,7 @@
     extrudeProgram = linkProgram(shaders.vsExtrude, shaders.fsExtrude);
     editorProgram = linkProgram(shaders.vsEditor, shaders.fsEditor);
 
-    U = getUniforms(program, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_selectedId", "u_hasSelection", "u_outlinePx", "u_levelActive", "u_levelMin", "u_levelMax"]);
+    U = getUniforms(program, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_selectedId", "u_hasSelection", "u_outlinePx", "u_levelActive", "u_levelMin", "u_levelMax", "u_alpha"]);
     WU = getUniforms(waterProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_waterLevel", "u_alpha", "u_time"]);
     BU = getUniforms(buildProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_sheet", "u_spritePx", "u_sheetCols"]);
     PU = getUniforms(pickProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
@@ -540,7 +540,17 @@ export function draw(now) {
   
   gl.uniform1f(U.outlinePx, 1.25);
   gl.uniform1i(gl.getUniformLocation(program, "u_showGrid"), appState.showGrid ? 1 : 0);
+  gl.uniform1f(U.alpha, appState.showUnderground ? 0.3 : 1.0);
+  if (appState.showUnderground) {
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.depthMask(false); // Let buildings render through the terrain
+  }
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, GRID_W * GRID_H);
+  if (appState.showUnderground) {
+      gl.disable(gl.BLEND);
+      gl.depthMask(true); // Restore depth mask for subsequent renders
+  }
 
   // Buildings (If applicable)
   if (buildBuffers.size > 0) {
@@ -680,7 +690,7 @@ export function draw(now) {
   gl.uniform1f(WU.zoom, camera.zoom); gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H);
   gl.uniform1f(WU.rotation, camera.rotation);
   gl.uniform1f(WU.elevStep, ELEV_STEP); gl.uniform1i(WU.gridW, GRID_W); gl.uniform1i(WU.gridH, GRID_H);
-  gl.uniform1f(WU.waterLevel, mapSettings.waterLevel); gl.uniform1f(WU.alpha, 0.48); gl.uniform1f(WU.time, (now || 0) * 0.001);
+  gl.uniform1f(WU.waterLevel, mapSettings.waterLevel); gl.uniform1f(WU.alpha, appState.showUnderground ? 0.2 : 0.48); gl.uniform1f(WU.time, (now || 0) * 0.001);
   gl.uniform1f(WU.tileW, TILE_W); gl.uniform1f(WU.tileH, TILE_H * camera.tilt);
   gl.uniform1f(WU.elevStep, ELEV_STEP * parallaxScalar);
 

@@ -76,6 +76,7 @@ export const brush = { radius: 2, smooth: 0.25 };
 export const appState = {
   toolMode: 'pan',
   showGrid: true,
+  showUnderground: false,
   activeExtrusion: null,
   editPathNodeIndex: -1, // Tracks the currently dragged node
   activeCubeIndex: -1,
@@ -139,6 +140,7 @@ export function serializeMap() {
     },
     brush,
     showGrid: appState.showGrid,
+    showUnderground: appState.showUnderground,
     waterLevel: mapSettings.waterLevel,
   };
 }
@@ -179,6 +181,9 @@ export function deserializeMap(data) {
 
     if (data.showGrid !== undefined) appState.showGrid = data.showGrid;
     else appState.showGrid = true;
+
+    if (data.showUnderground !== undefined) appState.showUnderground = data.showUnderground;
+    else appState.showUnderground = false;
 
     updateViewMenuUI();
 

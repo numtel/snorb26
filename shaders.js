@@ -54,7 +54,7 @@ in float v_height01; in vec2 v_uv; flat in int v_tileId; flat in ivec2 v_t;
 in vec3 v_normal;
 uniform sampler2D u_paletteTex; uniform int u_selectedId; uniform int u_hasSelection;
 uniform int u_levelActive; uniform ivec2 u_levelMin; uniform ivec2 u_levelMax; uniform float u_outlinePx;
-uniform int u_showGrid; uniform float u_zoom;
+uniform int u_showGrid; uniform float u_zoom; uniform float u_alpha;
 out vec4 fragColor;
 void main(){
   vec4 base = texture(u_paletteTex, vec2(clamp(v_height01, 0.0, 1.0), 0.5));
@@ -83,7 +83,7 @@ void main(){
 
   float d = min(min(v_uv.x, 1.0 - v_uv.x), min(v_uv.y, 1.0 - v_uv.y));
   float gridLine = (u_showGrid == 1) ? smoothstep(0.0, u_outlinePx * max(fwidth(v_uv.x), fwidth(v_uv.y)), d) : 1.0;
-  fragColor = vec4(mix(vec3(0.08), base.rgb, gridLine), 1.0);
+  fragColor = vec4(mix(vec3(0.08), base.rgb, gridLine), u_alpha);
 }`;
 
 export const vsWater = `#version 300 es

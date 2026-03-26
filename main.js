@@ -312,6 +312,10 @@ function menuClicks(command, tool) {
       appState.showGrid = !appState.showGrid;
       updateViewMenuUI();
       break;
+    case 'toggle-underground':
+      appState.showUnderground = !appState.showUnderground;
+      updateViewMenuUI();
+      break;
     default:
       console.error('invalid menu item', command);
   }
@@ -322,6 +326,10 @@ export function updateViewMenuUI() {
   const gridBtn = document.querySelector('button[data-command="toggle-grid"]');
   if (gridBtn) {
     gridBtn.classList.toggle('active', appState.showGrid);
+  }
+  const ugBtn = document.querySelector('button[data-command="toggle-underground"]');
+  if (ugBtn) {
+    ugBtn.classList.toggle('active', appState.showUnderground);
   }
 }
 
