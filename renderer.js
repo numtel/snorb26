@@ -317,20 +317,19 @@ export function rebuildBuildingInstances() {
 export function rebuildExtrusionBuffers() {
     const verts = [];
     const pushVert = (x, y, zOffset, nx, ny, nz, r, g, b) => verts.push(x, y, zOffset, nx, ny, nz, r, g, b);
-    
+
     const catmullRom = (p0, p1, p2, p3, t) => {
         const t2 = t * t, t3 = t2 * t;
-        const f0 = -0.5*t3 + t2 - 0.5*t; 
+        const f0 = -0.5*t3 + t2 - 0.5*t;
         const f1 = 1.5*t3 - 2.5*t2 + 1.0;
-        const f2 = -1.5*t3 + 2.0*t2 + 0.5*t; 
+        const f2 = -1.5*t3 + 2.0*t2 + 0.5*t;
         const f3 = 0.5*t3 - 0.5*t2;
         return { x: p0.x*f0 + p1.x*f1 + p2.x*f2 + p3.x*f3, y: p0.y*f0 + p1.y*f1 + p2.y*f2 + p3.y*f3 };
     };
 
     for (const ext of extrusions) {
         if (ext.points.length < 2) continue;
-        
-        // 1. Generate the dense, smooth path points
+
         const dense = [];
         const steps = 12;
         const pts = [ext.points[0], ...ext.points, ext.points[ext.points.length-1]];
@@ -341,93 +340,98 @@ export function rebuildExtrusionBuffers() {
             }
         }
 
-        // 2. Generate "Rings" at each point (pre-calculate cross-sections)
         const rings = [];
         const w = ext.width / 2;
         const h = ext.height;
+        const alt = ext.altitude || 0.0;
 
         for (let i = 0; i < dense.length; i++) {
             const p = dense[i];
             const pPrev = dense[Math.max(0, i - 1)];
             const pNext = dense[Math.min(dense.length - 1, i + 1)];
-            
-            // Calculate the average tangent direction at this point
+
             let dx = pNext.x - pPrev.x;
             let dy = pNext.y - pPrev.y;
             let len = Math.hypot(dx, dy);
-            
-            // Fallback for overlapping points
+
             if (len < 0.0001 && i < dense.length - 2) {
                 const pNextNext = dense[i+2];
                 dx = pNextNext.x - p.x; dy = pNextNext.y - p.y;
                 len = Math.hypot(dx, dy);
             }
-            
+
             const nx = -dy / (len || 1), ny = dx / (len || 1);
             rings.push({
                 p, nx, ny,
-                TL: { x: p.x + nx * w, y: p.y + ny * w }, // Top Left
-                TR: { x: p.x - nx * w, y: p.y - ny * w }  // Top Right
+                TL: { x: p.x + nx * w, y: p.y + ny * w },
+                TR: { x: p.x - nx * w, y: p.y - ny * w }
             });
         }
 
-        // 3. Stitch the rings together into triangles
         const c = ext.color;
         for (let i = 0; i < rings.length - 1; i++) {
             const r0 = rings[i], r1 = rings[i+1];
 
-            // Top Face (Shared vertices = no gaps)
-            pushVert(r0.TL.x, r0.TL.y, h, 0,0,1, c[0], c[1], c[2]);
-            pushVert(r0.TR.x, r0.TR.y, h, 0,0,1, c[0], c[1], c[2]);
-            pushVert(r1.TR.x, r1.TR.y, h, 0,0,1, c[0], c[1], c[2]);
-            
-            pushVert(r0.TL.x, r0.TL.y, h, 0,0,1, c[0], c[1], c[2]);
-            pushVert(r1.TR.x, r1.TR.y, h, 0,0,1, c[0], c[1], c[2]);
-            pushVert(r1.TL.x, r1.TL.y, h, 0,0,1, c[0], c[1], c[2]);
+            // Top Face
+            pushVert(r0.TL.x, r0.TL.y, alt + h, 0,0,1, c[0], c[1], c[2]);
+            pushVert(r0.TR.x, r0.TR.y, alt + h, 0,0,1, c[0], c[1], c[2]);
+            pushVert(r1.TR.x, r1.TR.y, alt + h, 0,0,1, c[0], c[1], c[2]);
+
+            pushVert(r0.TL.x, r0.TL.y, alt + h, 0,0,1, c[0], c[1], c[2]);
+            pushVert(r1.TR.x, r1.TR.y, alt + h, 0,0,1, c[0], c[1], c[2]);
+            pushVert(r1.TL.x, r1.TL.y, alt + h, 0,0,1, c[0], c[1], c[2]);
+
+            // Bottom Face
+            pushVert(r0.TL.x, r0.TL.y, alt, 0,0,-1, c[0]*0.5, c[1]*0.5, c[2]*0.5);
+            pushVert(r1.TR.x, r1.TR.y, alt, 0,0,-1, c[0]*0.5, c[1]*0.5, c[2]*0.5);
+            pushVert(r0.TR.x, r0.TR.y, alt, 0,0,-1, c[0]*0.5, c[1]*0.5, c[2]*0.5);
+
+            pushVert(r0.TL.x, r0.TL.y, alt, 0,0,-1, c[0]*0.5, c[1]*0.5, c[2]*0.5);
+            pushVert(r1.TL.x, r1.TL.y, alt, 0,0,-1, c[0]*0.5, c[1]*0.5, c[2]*0.5);
+            pushVert(r1.TR.x, r1.TR.y, alt, 0,0,-1, c[0]*0.5, c[1]*0.5, c[2]*0.5);
 
             // Left Wall
-            pushVert(r0.TL.x, r0.TL.y, 0, r0.nx, r0.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
-            pushVert(r1.TL.x, r1.TL.y, 0, r1.nx, r1.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
-            pushVert(r1.TL.x, r1.TL.y, h, r1.nx, r1.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
+            pushVert(r0.TL.x, r0.TL.y, alt, r0.nx, r0.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
+            pushVert(r1.TL.x, r1.TL.y, alt, r1.nx, r1.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
+            pushVert(r1.TL.x, r1.TL.y, alt + h, r1.nx, r1.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
 
-            pushVert(r0.TL.x, r0.TL.y, 0, r0.nx, r0.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
-            pushVert(r1.TL.x, r1.TL.y, h, r1.nx, r1.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
-            pushVert(r0.TL.x, r0.TL.y, h, r0.nx, r0.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
+            pushVert(r0.TL.x, r0.TL.y, alt, r0.nx, r0.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
+            pushVert(r1.TL.x, r1.TL.y, alt + h, r1.nx, r1.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
+            pushVert(r0.TL.x, r0.TL.y, alt + h, r0.nx, r0.ny, 0, c[0]*0.8, c[1]*0.8, c[2]*0.8);
 
             // Right Wall
-            pushVert(r0.TR.x, r0.TR.y, 0, -r0.nx, -r0.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
-            pushVert(r0.TR.x, r0.TR.y, h, -r0.nx, -r0.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
-            pushVert(r1.TR.x, r1.TR.y, h, -r1.nx, -r1.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
+            pushVert(r0.TR.x, r0.TR.y, alt, -r0.nx, -r0.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
+            pushVert(r0.TR.x, r0.TR.y, alt + h, -r0.nx, -r0.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
+            pushVert(r1.TR.x, r1.TR.y, alt + h, -r1.nx, -r1.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
 
-            pushVert(r0.TR.x, r0.TR.y, 0, -r0.nx, -r0.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
-            pushVert(r1.TR.x, r1.TR.y, h, -r1.nx, -r1.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
-            pushVert(r1.TR.x, r1.TR.y, 0, -r1.nx, -r1.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
+            pushVert(r0.TR.x, r0.TR.y, alt, -r0.nx, -r0.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
+            pushVert(r1.TR.x, r1.TR.y, alt + h, -r1.nx, -r1.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
+            pushVert(r1.TR.x, r1.TR.y, alt, -r1.nx, -r1.ny, 0, c[0]*0.6, c[1]*0.6, c[2]*0.6);
         }
 
-        // 4. End Caps (closing the start and end of the ribbon)
         if (rings.length > 1) {
             const first = rings[0], last = rings[rings.length-1];
             // Start
             const fdx = rings[1].p.x - first.p.x, fdy = rings[1].p.y - first.p.y;
             const fl = Math.hypot(fdx, fdy);
             const fnx = -fdx/(fl||1), fny = -fdy/(fl||1);
-            pushVert(first.TL.x, first.TL.y, 0, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
-            pushVert(first.TR.x, first.TR.y, 0, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
-            pushVert(first.TL.x, first.TL.y, h, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
-            pushVert(first.TR.x, first.TR.y, 0, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
-            pushVert(first.TR.x, first.TR.y, h, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
-            pushVert(first.TL.x, first.TL.y, h, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
-            
+            pushVert(first.TL.x, first.TL.y, alt, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(first.TR.x, first.TR.y, alt, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(first.TL.x, first.TL.y, alt + h, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(first.TR.x, first.TR.y, alt, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(first.TR.x, first.TR.y, alt + h, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(first.TL.x, first.TL.y, alt + h, fnx, fny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+
             // End
             const bdx = last.p.x - rings[rings.length-2].p.x, bdy = last.p.y - rings[rings.length-2].p.y;
             const bl = Math.hypot(bdx, bdy);
             const bnx = bdx/(bl||1), bny = bdy/(bl||1);
-            pushVert(last.TL.x, last.TL.y, 0, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
-            pushVert(last.TL.x, last.TL.y, h, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
-            pushVert(last.TR.x, last.TR.y, 0, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
-            pushVert(last.TR.x, last.TR.y, 0, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
-            pushVert(last.TL.x, last.TL.y, h, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
-            pushVert(last.TR.x, last.TR.y, h, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(last.TL.x, last.TL.y, alt, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(last.TL.x, last.TL.y, alt + h, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(last.TR.x, last.TR.y, alt, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(last.TR.x, last.TR.y, alt, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(last.TL.x, last.TL.y, alt + h, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
+            pushVert(last.TR.x, last.TR.y, alt + h, bnx, bny, 0, c[0]*0.7, c[1]*0.7, c[2]*0.7);
         }
     }
 

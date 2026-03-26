@@ -354,6 +354,7 @@ Object.entries({
   brushSmooth: e => brush.smooth = parseFloat(e.target.value),
   exWidth: e => extrusionSettings.width = parseFloat(e.target.value),
   exHeight: e => extrusionSettings.height = parseFloat(e.target.value),
+  exAltitude: e => extrusionSettings.altitude = parseFloat(e.target.value),
   exColor: e => {
     const hex = e.target.value;
     extrusionSettings.color = [ parseInt(hex.substr(1,2), 16)/255, parseInt(hex.substr(3,2), 16)/255, parseInt(hex.substr(5,2), 16)/255 ];
@@ -380,9 +381,10 @@ Object.entries({
         if (entry[0] === 'cbColor') c.c = [...cubeSettings.color];
         rebuildCubeBuffers();
     }
-    if (['exWidth', 'exHeight', 'exColor'].includes(entry[0]) && appState.activeExtrusion) {
+    if (['exWidth', 'exHeight', 'exAltitude', 'exColor'].includes(entry[0]) && appState.activeExtrusion) {
       if (entry[0] === 'exWidth') appState.activeExtrusion.width = extrusionSettings.width;
       if (entry[0] === 'exHeight') appState.activeExtrusion.height = extrusionSettings.height;
+      if (entry[0] === 'exAltitude') appState.activeExtrusion.altitude = extrusionSettings.altitude;
       if (entry[0] === 'exColor') appState.activeExtrusion.color = [...extrusionSettings.color];
 
       // Instantly update the 3D geometry

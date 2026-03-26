@@ -18,7 +18,7 @@ export let elevations = new Uint8Array(GRID_W * GRID_H);
 export let buildingAt = new Uint8Array(GRID_W * GRID_H);
 export const customBuildingRegistry = [];
 export const extrusions = [];
-export const extrusionSettings = { width: 0.5, height: 2.0, color: [0.5, 0.5, 0.5] };
+export const extrusionSettings = { width: 0.5, height: 2.0, altitude: 0.0, color: [0.5, 0.5, 0.5] };
 
 export const cubes = [];
 export const cubeSettings = { width: 4.0, length: 4.0, height: 10.0, rotation: 0.0, color: [1.0, 0.26, 0.26] };

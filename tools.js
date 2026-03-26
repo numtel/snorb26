@@ -280,11 +280,22 @@ export function brushForest(cx, cy, input) {
 
 export function appendExtrusionPoint(x, y) {
     if (!appState.activeExtrusion) {
-        appState.activeExtrusion = { points: [{x, y}], width: extrusionSettings.width, height: extrusionSettings.height, color: [...extrusionSettings.color] };
+        appState.activeExtrusion = {
+          points: [{x, y}],
+          width: extrusionSettings.width,
+          height: extrusionSettings.height,
+          altitude: extrusionSettings.altitude || 0,
+          color: [...extrusionSettings.color]
+        };
         extrusions.push(appState.activeExtrusion);
     } else {
-        const pts = appState.activeExtrusion.points;
+        const ext = appState.activeExtrusion;
+        const pts = ext.points;
         if (pts[pts.length - 1].x !== x || pts[pts.length - 1].y !== y) {
+            // Collision Check!
+            if (isSegmentColliding(pts[pts.length - 1], {x, y}, ext, ext)) {
+                return; // Abort appending this point due to overlap
+            }
             pts.push({x, y});
         }
     }
@@ -307,6 +318,36 @@ function distToSegmentSq(p, v, w) {
     let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
     t = Math.max(0, Math.min(1, t));
     return distSq(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) });
+}
+
+// Helper to determine if a newly proposed segment intersects or gets too close to an existing segment
+function isSegmentColliding(pA, pB, extA, excludeExt) {
+    const altA = extA.altitude || 0;
+    const hA = extA.height;
+    const samples = Math.max(2, Math.ceil(Math.sqrt(distSq(pA, pB)) * 2));
+
+    for (const extB of extrusions) {
+        if (extB === excludeExt) continue;
+
+        const altB = extB.altitude || 0;
+        const hB = extB.height;
+        // Z Overlap check. If they don't overlap vertically, they don't collide.
+        if (Math.max(altA, altB) >= Math.min(altA + hA, altB + hB)) {
+            continue;
+        }
+
+        const minDistSq = Math.pow((extA.width + extB.width) / 2 + 0.5, 2);
+        for (let j = 0; j < extB.points.length - 1; j++) {
+            for (let i = 0; i <= samples; i++) {
+                const t = i / samples;
+                const pt = { x: pA.x + t * (pB.x - pA.x), y: pA.y + t * (pB.y - pA.y) };
+                if (distToSegmentSq(pt, extB.points[j], extB.points[j+1]) < minDistSq) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 export function editPathDown(tx, ty, button) {
@@ -403,9 +444,11 @@ export function editPathDown(tx, ty, button) {
             const dEnd = distSq(pt, pts[pts.length - 1]);
             if (dStart <= 16 || dEnd <= 16) { // 4 tiles radius limit to append
                 if (dStart < dEnd) {
+                    if (isSegmentColliding({x: tx, y: ty}, pts[0], appState.activeExtrusion, appState.activeExtrusion)) return;
                     pts.unshift({x: tx, y: ty});
                     appState.editPathNodeIndex = 0;
                 } else {
+                    if (isSegmentColliding(pts[pts.length - 1], {x: tx, y: ty}, appState.activeExtrusion, appState.activeExtrusion)) return;
                     pts.push({x: tx, y: ty});
                     appState.editPathNodeIndex = pts.length - 1;
                 }
@@ -439,12 +482,27 @@ export function editPathDown(tx, ty, button) {
 
 export function editPathDrag(tx, ty) {
     if (appState.activeExtrusion && appState.editPathNodeIndex >= 0) {
-        const pts = appState.activeExtrusion.points;
+        const ext = appState.activeExtrusion;
+        const pts = ext.points;
         const idx = appState.editPathNodeIndex;
+
         if (pts[idx].x !== tx || pts[idx].y !== ty) {
+            const oldX = pts[idx].x;
+            const oldY = pts[idx].y;
             pts[idx].x = tx;
             pts[idx].y = ty;
-            rebuildExtrusionBuffers();
+
+            // Enforce Collision while dragging
+            let collides = false;
+            if (idx > 0 && isSegmentColliding(pts[idx-1], pts[idx], ext, ext)) collides = true;
+            if (!collides && idx < pts.length - 1 && isSegmentColliding(pts[idx], pts[idx+1], ext, ext)) collides = true;
+
+            if (collides) {
+                pts[idx].x = oldX;
+                pts[idx].y = oldY; // Revert Drag
+            } else {
+                rebuildExtrusionBuffers();
+            }
         }
     }
 }
@@ -455,15 +513,18 @@ export function syncExtrusionUI(ext) {
     // 1. Update internal state
     extrusionSettings.width = ext.width;
     extrusionSettings.height = ext.height;
+    extrusionSettings.altitude = ext.altitude || 0;
     extrusionSettings.color = [...ext.color];
 
     // 2. Update DOM elements
     const wEl = document.getElementById('exWidth');
     const hEl = document.getElementById('exHeight');
+    const aEl = document.getElementById('exAltitude');
     const cEl = document.getElementById('exColor');
 
     if (wEl) wEl.value = ext.width;
     if (hEl) hEl.value = ext.height;
+    if (aEl) aEl.value = ext.altitude || 0;
     if (cEl) {
         // Convert Float RGB to Hex for the color input
         const r = Math.round(ext.color[0] * 255).toString(16).padStart(2, '0');
