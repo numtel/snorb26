@@ -322,6 +322,7 @@ function distToSegmentSq(p, v, w) {
 
 // Helper to determine if a newly proposed segment intersects or gets too close to an existing segment
 function isSegmentColliding(pA, pB, extA, excludeExt) {
+    return false; // Disable collision detection
     const altA = extA.altitude || 0;
     const hA = extA.height;
     const samples = Math.max(2, Math.ceil(Math.sqrt(distSq(pA, pB)) * 2));
