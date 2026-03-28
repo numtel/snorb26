@@ -21,9 +21,11 @@ __DATA__
 
 ### `map`
 Defines the global environment and grid dimensions.
+* **version**: Currently, 2. The original version 1 was the JSON format.
 * **width / height**: The dimensions of the tile grid (typically 256).
 * **waterLevel**: 0-255. Determines the elevation at which the water plane renders.
 * **showGrid**: `true` or `false`.
+* **showUnderground**: `true` or `false`.
 
 ### `camera`
 Stores the viewport state.
@@ -31,6 +33,15 @@ Stores the viewport state.
 * **zoom**: 1.0 is default.
 * **tilt**: Vertical skew (0.35 to 2.0).
 * **rotation**: Radiant value for world rotation.
+
+### `brush`
+Stores the brush settings.
+* **radius**: Size (1 to 8)
+* **smooth**: Factor (0 to 1)
+
+### `customBuildings`
+Stores the URLs for the custom sprites used in the Forest/Custom Build tools
+* *index*: URL (ensure CORS for URLs on other domains)
 
 ### `cube`
 Defines a primitive 3D box.
