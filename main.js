@@ -261,11 +261,11 @@ function menuClicks(command, tool) {
 
   switch(command) {
     case 'reset':
-      if (confirm("Are you sure you want to clear the city?")) {
+      if (confirm("Are you sure you want to clear the map?")) {
         const nextW = parseInt(document.getElementById('newWidth').value, 10) || 256;
         const nextH = parseInt(document.getElementById('newHeight').value, 10) || 256;
         // 1. Clear local storage
-        localStorage.removeItem('dencity_map_data');
+        localStorage.removeItem('snorb_map_data');
 
         // 2. Re-seed the map elevations and clear buildings
         resizeMapState(nextW, nextH);

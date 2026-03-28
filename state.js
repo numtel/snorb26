@@ -47,18 +47,16 @@ export const camera = {
   zoom: 1.0,
   tilt: 1.0,
   rotation: 0,
-  // New target values for interpolation
   targetPanX: 0,
   targetPanY: (256 + 256) * (32 * 0.25),
   targetZoom: 1.0,
   targetTilt: 1.0,
   targetRotation: 0,
-
   minZoom: 0.1,
   maxZoom: 5.0,
   minTilt: 0.35,
   maxTilt: 2.0,
-  lerpFactor: 0.15 // Adjust this for "slipperiness" (0.1 = slow, 0.3 = fast)
+  lerpFactor: 0.15
 };
 export const selected = { has: false, x: 0, y: 0, id: 0 };
 export const levelSel = { active: false, startX: 0, startY: 0, endX: 0, endY: 0, base: 0, pointerId: null };
@@ -78,12 +76,11 @@ export const appState = {
   showGrid: true,
   showUnderground: false,
   activeExtrusion: null,
-  editPathNodeIndex: -1, // Tracks the currently dragged node
+  editPathNodeIndex: -1,
   activeCubeIndex: -1,
-  activeCubeHandle: -1, // 0: center, 1-4: corners
+  activeCubeHandle: -1,
 };
 
-// Helpers
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 export function screenToWorld(sx, sy, canvasWidth, canvasHeight) {
@@ -93,8 +90,6 @@ export function screenToWorld(sx, sy, canvasWidth, canvasHeight) {
 }
 
 export function tileCenterWorld(tx, ty, rotOverride = null) {
-  // Use the same math as the vertex shader for consistency
-  // We add 0.5 to tx and ty to get the center of the tile, not the top corner
   const px = (tx + 0.5) - GRID_W * 0.5;
   const py = (ty + 0.5) - GRID_H * 0.5;
   const angle = rotOverride !== null ? rotOverride : camera.rotation;
@@ -110,45 +105,179 @@ export function tileCenterWorld(tx, ty, rotOverride = null) {
   return [wx, wy - (h * ELEV_STEP * parallaxScalar)];
 }
 
-// Convert Screen coordinates to "Anchor" coordinates
-// relative to the center of the world, independent of current pan.
 export function screenToWorldAtRotation(sx, sy, canvasWidth, canvasHeight, rot) {
-  // This is effectively screenToWorld minus the camera.pan addition
-  // but accounting for the rotation transform
   const x = (sx - canvasWidth * 0.5) / camera.zoom;
   const y = (sy - canvasHeight * 0.5) / camera.zoom;
   return [x, y];
 }
 
-// --- 1. Core Serialization ---
-// This turns your live state into a clean JSON-serializable object
+// --- 1. Core Serialization (Custom CSS-Like Format) ---
+
 export function serializeMap() {
-  return {
-    version: 1,
-    grid: { w: GRID_W, h: GRID_H },
-    elevations: Array.from(elevations),
-    buildingAt: Array.from(buildingAt),
-    customBuildingRegistry: Array.from(customBuildingRegistry),
-    extrusions,
-    cubes,
-    camera: {
-      panX: camera.targetPanX,
-      panY: camera.targetPanY,
-      zoom: camera.targetZoom,
-      tilt: camera.targetTilt,
-      rotation: camera.rotation,
-    },
-    brush,
-    showGrid: appState.showGrid,
-    showUnderground: appState.showUnderground,
-    waterLevel: mapSettings.waterLevel,
-  };
+  let out = `map {\n  version: 2;\n  width: ${GRID_W};\n  height: ${GRID_H};\n  waterLevel: ${mapSettings.waterLevel};\n  showGrid: ${appState.showGrid};\n  showUnderground: ${appState.showUnderground};\n}\n\n`;
+
+  out += `camera {\n  panX: ${camera.targetPanX};\n  panY: ${camera.targetPanY};\n  zoom: ${camera.targetZoom};\n  tilt: ${camera.targetTilt};\n  rotation: ${camera.rotation};\n}\n\n`;
+
+  out += `brush {\n  radius: ${brush.radius};\n  smooth: ${brush.smooth};\n}\n\n`;
+
+  if (customBuildingRegistry.length > 0) {
+    out += `customBuildings {\n`;
+    customBuildingRegistry.forEach((url, i) => { out += `  ${i}: ${url};\n`; });
+    out += `}\n\n`;
+  }
+
+  cubes.forEach(c => {
+    out += `cube {\n  x: ${c.x};\n  y: ${c.y};\n  w: ${c.w};\n  l: ${c.l !== undefined ? c.l : c.w};\n  h: ${c.h};\n  r: ${c.r || 0};\n  c: ${c.c.join(', ')};\n}\n\n`;
+  });
+
+  extrusions.forEach(ext => {
+    out += `path {\n  width: ${ext.width};\n  height: ${ext.height};\n  altitude: ${ext.altitude || 0};\n  color: ${ext.color.join(', ')};\n  points: ${ext.points.map(p => `${p.x},${p.y}`).join(' | ')};\n}\n\n`;
+  });
+
+  out += `__DATA__\n`;
+  
+  // Pack elevations and buildingAt into a single binary buffer for compression
+  const binLen = GRID_W * GRID_H;
+  const combined = new Uint8Array(binLen * 2);
+  combined.set(elevations, 0);
+  combined.set(buildingAt, binLen);
+
+  // Fast Uint8Array to Base64 in chunks (avoids stack overflow)
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < combined.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, combined.subarray(i, i + chunk));
+  }
+  out += btoa(binary);
+
+  return out;
 }
 
-// This applies a serialized object back to the live state
-export function deserializeMap(data) {
-  if (!data || !data.elevations) return false;
+export function deserializeMap(text) {
+  if (!text || typeof text !== 'string') return false;
 
+  // Backward compatibility for old JSON saves
+  if (text.trim().startsWith('{')) {
+      try {
+          return deserializeMapJSON(JSON.parse(text));
+      } catch(e) { return false; }
+  }
+
+  try {
+    const parts = text.split('__DATA__');
+    const blocksText = parts[0];
+    const b64 = parts[1] ? parts[1].trim() : '';
+
+    const data = { extrusions: [], cubes: [], customBuildingRegistry: [], camera: {}, map: {}, brush: {} };
+    const blockRegex = /(\w+)\s*{([^}]+)}/g;
+    let match;
+    
+    // Parse the CSS-like text blocks
+    while ((match = blockRegex.exec(blocksText)) !== null) {
+      const type = match[1];
+      const content = match[2];
+      const props = {};
+      
+      content.split(';').forEach(line => {
+        const colon = line.indexOf(':');
+        if (colon === -1) return;
+        props[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
+      });
+
+      if (type === 'map') Object.assign(data.map, props);
+      else if (type === 'camera') Object.assign(data.camera, props);
+      else if (type === 'brush') Object.assign(data.brush, props);
+      else if (type === 'customBuildings') {
+        Object.keys(props).forEach(k => { data.customBuildingRegistry[parseInt(k)] = props[k]; });
+      }
+      else if (type === 'cube') {
+        data.cubes.push({
+          x: parseFloat(props.x), y: parseFloat(props.y),
+          w: parseFloat(props.w), l: parseFloat(props.l), h: parseFloat(props.h),
+          r: parseFloat(props.r), c: props.c.split(',').map(Number)
+        });
+      }
+      else if (type === 'path') {
+        data.extrusions.push({
+          width: parseFloat(props.width), height: parseFloat(props.height), altitude: parseFloat(props.altitude),
+          color: props.color.split(',').map(Number),
+          points: props.points.split('|').map(p => {
+              const [x,y] = p.split(',').map(Number);
+              return {x, y};
+          })
+        });
+      }
+    }
+
+    const gw = parseInt(data.map.width || 256);
+    const gh = parseInt(data.map.height || 256);
+    resizeMapState(gw, gh);
+
+    // Unpack Binary Data
+    if (b64) {
+      const binary = atob(b64);
+      const binLen = gw * gh;
+      for (let i = 0; i < binLen; i++) {
+          elevations[i] = binary.charCodeAt(i);
+          buildingAt[i] = binary.charCodeAt(binLen + i);
+      }
+    }
+
+    // Restore Collections
+    if (data.customBuildingRegistry) {
+       customBuildingRegistry.length = 0;
+       customBuildingRegistry.push(...data.customBuildingRegistry);
+       customBuildingRegistry.forEach(url => { if(url) loadCustomTexture(url); });
+    }
+
+    extrusions.length = 0;
+    extrusions.push(...data.extrusions);
+    cubes.length = 0;
+    cubes.push(...data.cubes);
+
+    // Restore Camera
+    if (data.camera.zoom) {
+      camera.panX = camera.targetPanX = parseFloat(data.camera.panX);
+      camera.panY = camera.targetPanY = parseFloat(data.camera.panY);
+      camera.zoom = camera.targetZoom = parseFloat(data.camera.zoom);
+      camera.tilt = camera.targetTilt = parseFloat(data.camera.tilt || 1.0);
+      camera.rotation = camera.targetRotation = parseFloat(data.camera.rotation || 0);
+    }
+
+    // Restore Settings
+    mapSettings.waterLevel = parseInt(data.map.waterLevel || 86);
+    const wEl = document.getElementById('waterLevel');
+    if (wEl) wEl.value = mapSettings.waterLevel;
+    updatePaletteTexture();
+
+    appState.showGrid = data.map.showGrid !== 'false';
+    appState.showUnderground = data.map.showUnderground === 'true';
+    updateViewMenuUI();
+
+    if (data.brush.radius) {
+      brush.radius = parseInt(data.brush.radius);
+      brush.smooth = parseFloat(data.brush.smooth);
+      const rEl = document.getElementById('brushSize');
+      const sEl = document.getElementById('brushSmooth');
+      if (rEl) rEl.value = brush.radius;
+      if (sEl) sEl.value = brush.smooth;
+    }
+
+    // Trigger GPU Rebuilds
+    uploadElevations();
+    rebuildExtrusionBuffers();
+    rebuildCubeBuffers();
+    rebuildBuildingInstances();
+    return true;
+  } catch (e) {
+    console.error("Failed to parse map text data", e);
+    return false;
+  }
+}
+
+// Backward Compatibility for loading older maps
+function deserializeMapJSON(data) {
+  if (!data || !data.elevations) return false;
   try {
     resizeMapState(data.grid.w, data.grid.h);
     elevations.set(data.elevations);
@@ -160,10 +289,7 @@ export function deserializeMap(data) {
        customBuildingRegistry.forEach(url => loadCustomTexture(url));
     }
 
-    if (data.extrusions) {
-      extrusions.length = 0;
-      extrusions.push(...data.extrusions);
-    }
+    if (data.extrusions) { extrusions.length = 0; extrusions.push(...data.extrusions); }
     if (data.cubes) { cubes.length = 0; cubes.push(...data.cubes); }
 
     if (data.camera) {
@@ -180,29 +306,25 @@ export function deserializeMap(data) {
     updatePaletteTexture();
 
     if (data.showGrid !== undefined) appState.showGrid = data.showGrid;
-    else appState.showGrid = true;
-
     if (data.showUnderground !== undefined) appState.showUnderground = data.showUnderground;
-    else appState.showUnderground = false;
-
     updateViewMenuUI();
 
     if (data.brush) {
       brush.radius = data.brush.radius;
       brush.smooth = data.brush.smooth;
-      // UI update check
       const rEl = document.getElementById('brushSize');
       const sEl = document.getElementById('brushSmooth');
       if (rEl) rEl.value = brush.radius;
       if (sEl) sEl.value = brush.smooth;
     }
+
     uploadElevations();
     rebuildExtrusionBuffers();
     rebuildCubeBuffers();
     rebuildBuildingInstances();
     return true;
   } catch (e) {
-    console.error("Failed to parse map data", e);
+    console.error("Failed to parse map data JSON", e);
     return false;
   }
 }
@@ -222,40 +344,36 @@ let saveTimeout = null;
 export function saveMapToLocal() {
   if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
-    const data = serializeMap();
-    localStorage.setItem('dencity_map_data', JSON.stringify(data));
+    const dataText = serializeMap();
+    localStorage.setItem('snorb_map_data', dataText);
     saveTimeout = null;
   }, 500);
 }
 
 export function loadMapFromLocal() {
-  const saved = localStorage.getItem('dencity_map_data');
+  const saved = localStorage.getItem('snorb_map_data');
   if (!saved) return false;
-  return deserializeMap(JSON.parse(saved));
+  return deserializeMap(saved);
 }
 
 // --- 3. File I/O (Download/Upload) ---
 export function downloadMapFile() {
-  const data = serializeMap();
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const dataText = serializeMap();
+  const blob = new Blob([dataText], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement('a');
   a.href = url;
-  a.download = `map_${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `map_${new Date().toISOString().slice(0,10)}.snorb`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
-/**
- * Creates an internal file input, triggers the picker,
- * and processes the file upload.
- */
 export function uploadMapFile() {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json,application/json';
+    input.accept = '.txt,.json,.snorb,text/plain,application/json';
 
     input.onchange = (e) => {
       const file = e.target.files[0];
@@ -267,8 +385,7 @@ export function uploadMapFile() {
       const reader = new FileReader();
       reader.onload = (event) => {
         try {
-          const json = JSON.parse(event.target.result);
-          const success = deserializeMap(json);
+          const success = deserializeMap(event.target.result);
           saveMapToLocal();
           resolve(success);
         } catch (err) {
@@ -279,7 +396,6 @@ export function uploadMapFile() {
       reader.readAsText(file);
     };
 
-    // Trigger the OS file picker
     input.click();
   });
 }
