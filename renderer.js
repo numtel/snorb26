@@ -637,6 +637,12 @@ export function draw(now) {
   }
 
   // DRAW CUBES
+  let needsCubeRebuild = false;
+  for (let i = 0; i < cubes.length; i++) {
+      if (cubes[i].fns) { needsCubeRebuild = true; break; }
+  }
+  if (needsCubeRebuild) rebuildCubeBuffers(now);
+
   if (cubeVertCount > 0) {
       gl.useProgram(extrudeProgram);
       gl.bindVertexArray(cubeVao);
@@ -700,19 +706,37 @@ export function draw(now) {
 
 }
 
-export function rebuildCubeBuffers() {
+export function rebuildCubeBuffers(now = 0) {
     const verts = [];
     const pushVert = (x, y, zOffset, nx, ny, nz, r, g, b) => verts.push(x, y, zOffset, nx, ny, nz, r, g, b);
 
-    for (const cube of cubes) {
-        const hw = cube.w / 2;
-        const hl = (cube.l !== undefined ? cube.l : cube.w) / 2;
-        const h = cube.h;
-        const cx = cube.x, cy = cube.y;
-        const c = cube.c;
+    // Time relative to seconds
+    const t = now * 0.001;
 
-        const c_rot = Math.cos(cube.r || 0);
-        const s_rot = Math.sin(cube.r || 0);
+    for (const cube of cubes) {
+        // Evaluate dynamic deltas
+        const ex = cube.x + (cube.fns?.x ? cube.fns.x(t) : 0);
+        const ey = cube.y + (cube.fns?.y ? cube.fns.y(t) : 0);
+        const ew = Math.max(0.1, cube.w + (cube.fns?.w ? cube.fns.w(t) : 0));
+        const el = Math.max(0.1, (cube.l !== undefined ? cube.l : cube.w) + (cube.fns?.l ? cube.fns.l(t) : 0));
+        const eh = Math.max(0.1, cube.h + (cube.fns?.h ? cube.fns.h(t) : 0));
+        const er = (cube.r || 0) + (cube.fns?.r ? cube.fns.r(t) : 0);
+
+        const ec = [...cube.c];
+        if (cube.fns?.c) {
+            ec[0] = Math.max(0, Math.min(1, ec[0] + (cube.fns.c[0] ? cube.fns.c[0](t) : 0)));
+            ec[1] = Math.max(0, Math.min(1, ec[1] + (cube.fns.c[1] ? cube.fns.c[1](t) : 0)));
+            ec[2] = Math.max(0, Math.min(1, ec[2] + (cube.fns.c[2] ? cube.fns.c[2](t) : 0)));
+        }
+
+        const hw = ew / 2;
+        const hl = el / 2;
+        const h = eh;
+        const cx = ex, cy = ey;
+        const c = ec;
+
+        const c_rot = Math.cos(er);
+        const s_rot = Math.sin(er);
 
         // Helper to rotate local vertex coordinates
         const rot = (lx, ly) => ({

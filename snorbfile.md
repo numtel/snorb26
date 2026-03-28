@@ -49,6 +49,8 @@ Defines a primitive 3D box.
 * **w / l / h**: Width, Length, and Height.
 * **r**: Rotation in radians.
 * **c**: Color as three comma-separated floats (`R, G, B`) from 0.0 to 1.0.
+* **dx / dy / dw / dl / dh / dr**: (Optional) Mathematical expressions for delta values evaluated dynamically over time `t` (in seconds). Can parse standard trig operations (`sin`, `cos`, `tan`), `pi`.
+* **dc**: (Optional) Three comma-separated math expressions for color channel deltas.
 
 ### `path`
 Defines an extruded 3D polyline (roads, fences, paths).
@@ -88,6 +90,21 @@ cube {
   h: 50;
   r: 0.785;
   c: 1.0, 0.0, 0.0;
+}
+
+
+cube {
+  x: 180;
+  y: 90;
+  w: 20.95898779020532;
+  l: 33.35747038985457;
+  h: 79;
+  r: 2.55;
+  c: 0.1, 0.2549019607843137, 0.6745098039215687;
+  // Oscillate smoothly between 180 and 200 every 30 seconds
+  dx: 10 - 10 * cos((2 * pi) / 30 * t);
+  // Fluctuate the redness every 3 seconds
+  dc: 0.9 * 0.9 * cos((2 * pi) / 3 * t), 0 , 0;
 }
 
 path {

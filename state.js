@@ -111,6 +111,24 @@ export function screenToWorldAtRotation(sx, sy, canvasWidth, canvasHeight, rot) 
   return [x, y];
 }
 
+export function compileMath(expr) {
+  if (!expr) return null;
+  let jsExpr = expr
+    .replace(/\bpi\b/gi, "Math.PI")
+    .replace(/\bcos\(/gi, "Math.cos(")
+    .replace(/\bsin\(/gi, "Math.sin(")
+    .replace(/\btan\(/gi, "Math.tan(")
+    .replace(/\babs\(/gi, "Math.abs(")
+    .replace(/\bmin\(/gi, "Math.min(")
+    .replace(/\bmax\(/gi, "Math.max(");
+  try {
+    return new Function('t', `try { return ${jsExpr}; } catch(e) { return 0; }`);
+  } catch(e) {
+    console.warn("Snorb math compilation failed for:", expr, e);
+    return null;
+  }
+}
+
 // --- 1. Core Serialization (Custom CSS-Like Format) ---
 
 export function serializeMap() {
@@ -127,7 +145,17 @@ export function serializeMap() {
   }
 
   cubes.forEach(c => {
-    out += `cube {\n  x: ${c.x};\n  y: ${c.y};\n  w: ${c.w};\n  l: ${c.l !== undefined ? c.l : c.w};\n  h: ${c.h};\n  r: ${c.r || 0};\n  c: ${c.c.join(', ')};\n}\n\n`;
+    out += `cube {\n  x: ${c.x};\n  y: ${c.y};\n  w: ${c.w};\n  l: ${c.l !== undefined ? c.l : c.w};\n  h: ${c.h};\n  r: ${c.r || 0};\n  c: ${c.c.join(', ')};\n`;
+    if (c.rawDeltas) {
+      if (c.rawDeltas.x) out += `  dx: ${c.rawDeltas.x};\n`;
+      if (c.rawDeltas.y) out += `  dy: ${c.rawDeltas.y};\n`;
+      if (c.rawDeltas.w) out += `  dw: ${c.rawDeltas.w};\n`;
+      if (c.rawDeltas.l) out += `  dl: ${c.rawDeltas.l};\n`;
+      if (c.rawDeltas.h) out += `  dh: ${c.rawDeltas.h};\n`;
+      if (c.rawDeltas.r) out += `  dr: ${c.rawDeltas.r};\n`;
+      if (c.rawDeltas.c) out += `  dc: ${c.rawDeltas.c};\n`;
+    }
+    out += `}\n\n`;
   });
 
   extrusions.forEach(ext => {
@@ -177,8 +205,10 @@ export function deserializeMap(text) {
       const type = match[1];
       const content = match[2];
       const props = {};
-      
-      content.split(';').forEach(line => {
+
+      // Strip out comments like `// Fluctuate the redness` so they don't corrupt properties
+      const cleanContent = content.replace(/\/\/.*$/gm, '');
+      cleanContent.split(';').forEach(line => {
         const colon = line.indexOf(':');
         if (colon === -1) return;
         props[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
@@ -191,11 +221,33 @@ export function deserializeMap(text) {
         Object.keys(props).forEach(k => { data.customBuildingRegistry[parseInt(k)] = props[k]; });
       }
       else if (type === 'cube') {
-        data.cubes.push({
+        const cube = {
           x: parseFloat(props.x), y: parseFloat(props.y),
           w: parseFloat(props.w), l: parseFloat(props.l), h: parseFloat(props.h),
           r: parseFloat(props.r), c: props.c.split(',').map(Number)
-        });
+        };
+        const rawDeltas = {};
+        const fns = {};
+        let hasAnim = false;
+
+        if (props.dx) { rawDeltas.x = props.dx; fns.x = compileMath(props.dx); hasAnim = true; }
+        if (props.dy) { rawDeltas.y = props.dy; fns.y = compileMath(props.dy); hasAnim = true; }
+        if (props.dw) { rawDeltas.w = props.dw; fns.w = compileMath(props.dw); hasAnim = true; }
+        if (props.dl) { rawDeltas.l = props.dl; fns.l = compileMath(props.dl); hasAnim = true; }
+        if (props.dh) { rawDeltas.h = props.dh; fns.h = compileMath(props.dh); hasAnim = true; }
+        if (props.dr) { rawDeltas.r = props.dr; fns.r = compileMath(props.dr); hasAnim = true; }
+        if (props.dc) {
+            rawDeltas.c = props.dc;
+            fns.c = props.dc.split(',').map(s => compileMath(s.trim()));
+            hasAnim = true;
+        }
+
+        if (hasAnim) {
+            cube.rawDeltas = rawDeltas;
+            cube.fns = fns;
+        }
+
+        data.cubes.push(cube);
       }
       else if (type === 'path') {
         data.extrusions.push({
