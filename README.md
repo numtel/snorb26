@@ -4,6 +4,8 @@
 
 This new Snorb has been brought to existence with much help from Google Gemini.
 
+State is persisted in local storage in the browser between page refreshes and maps can be saved and loaded to external files in the [snorbfile format](snorbfile.md).
+
 ## Usage
 
 No build script, just serve the directory. For example, using Python:
