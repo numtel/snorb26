@@ -105,6 +105,8 @@ cube {
   dx: 10 - 10 * cos((2 * pi) / 30 * t);
   // Fluctuate the redness every 3 seconds
   dc: 0.9 * 0.9 * cos((2 * pi) / 3 * t), 0 , 0;
+  // Full rotation every 3 seconds
+  dr: (2 * pi) / 3 * t;
 }
 
 path {
