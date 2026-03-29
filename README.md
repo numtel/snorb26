@@ -14,6 +14,15 @@ $ python3 -m http.server 8000
 # Now open your web browser to http://localhost:8000/
 ```
 
+## Testing
+
+There are tests to ensure the security of delta functions
+
+```
+# No npm install necessary, no deps!
+$ npm test
+```
+
 ## History
 
 [Proto snorb, dencity in 2010](https://old.latenightsketches.com/ashow/101100.png) used raw 2d canvas and was very slow. Sadly, the source has been lost to time.

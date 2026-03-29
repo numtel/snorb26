@@ -49,7 +49,7 @@ Defines a primitive 3D box.
 * **w / l / h**: Width, Length, and Height.
 * **r**: Rotation in radians.
 * **c**: Color as three comma-separated floats (`R, G, B`) from 0.0 to 1.0.
-* **dx / dy / dw / dl / dh / dr**: (Optional) Mathematical expressions for delta values evaluated dynamically over time `t` (in seconds). Can parse standard trig operations (`sin`, `cos`, `tan`), `pi`.
+* **dx / dy / dw / dl / dh / dr**: (Optional) Mathematical expressions for delta values evaluated dynamically over time `t` (in seconds). Supports all standard JavaScript `Math` operations using shorthand (e.g., `sin`, `cos`, `tan`, `sqrt`, `abs`, `min`, `max`, `floor`, `pow`), and the constant `pi`. For security, only pure mathematical expressions containing numbers, standard operators, and supported functions are allowed.
 * **dc**: (Optional) Three comma-separated math expressions for color channel deltas.
 
 ### `path`

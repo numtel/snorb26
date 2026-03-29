@@ -1,0 +1,20 @@
+{
+  "name": "snorb",
+  "type": "module",
+  "version": "0.0.26",
+  "description": "sculpt your way",
+  "main": "main.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/numtel/snorb26.git"
+  },
+  "author": "sen green <ben@latenightsketches.com>",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/numtel/snorb26/issues"
+  },
+  "homepage": "https://github.com/numtel/snorb26#readme"
+}

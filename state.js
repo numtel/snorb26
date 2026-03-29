@@ -1,12 +1,3 @@
-import {
-  uploadElevations,
-  rebuildBuildingInstances,
-  loadCustomTexture,
-  updatePaletteTexture,
-  rebuildExtrusionBuffers,
-  rebuildCubeBuffers,
-} from './renderer.js';
-import { updateViewMenuUI } from './main.js';
 export let GRID_W = 256;
 export let GRID_H = 256;
 export const TILE_W = 64;
@@ -113,15 +104,47 @@ export function screenToWorldAtRotation(sx, sy, canvasWidth, canvasHeight, rot) 
 
 export function compileMath(expr) {
   if (!expr) return null;
-  let jsExpr = expr
-    .replace(/\bpi\b/gi, "Math.PI")
-    .replace(/\bcos\(/gi, "Math.cos(")
-    .replace(/\bsin\(/gi, "Math.sin(")
-    .replace(/\btan\(/gi, "Math.tan(")
-    .replace(/\babs\(/gi, "Math.abs(")
-    .replace(/\bmin\(/gi, "Math.min(")
-    .replace(/\bmax\(/gi, "Math.max(");
+
+  // 1. Character Whitelist: Only allow alphanumeric, spaces, and safe math symbols.
+  // This explicitly blocks brackets [], braces {}, quotes "", and equals = to stop injection.
+  const safeCharRegex = /^[a-zA-Z0-9_\s+\-*/%(),.]*$/;
+  if (!safeCharRegex.test(expr)) {
+    console.warn(`Snorb math compilation blocked due to unsafe characters in: "${expr}"`);
+    return null;
+  }
+
+  // 2. Word Whitelist: Extract all letter-based identifiers.
+  const words = expr.match(/\b[a-zA-Z_]\w*\b/g) || [];
+
+  // Get all standard properties on the Math object (sin, cos, PI, E, etc.)
+  const mathProps = Object.getOwnPropertyNames(Math);
+  const allowedKeywords = new Set(['t', 'pi']);
+  mathProps.forEach(p => allowedKeywords.add(p.toLowerCase()));
+
+  // Ensure every single word typed belongs strictly to our approved whitelist
+  for (const word of words) {
+    if (!allowedKeywords.has(word.toLowerCase())) {
+      console.warn(`Snorb math compilation blocked unsafe or unknown identifier: "${word}"`);
+      return null;
+    }
+  }
+
+  // 3. Transform shorthand math functions and constants into Math.xxxx
+  const jsExpr = expr.replace(/\b[a-zA-Z_]\w*\b/g, (match) => {
+    const lower = match.toLowerCase();
+    if (lower === 't') return 't';
+    if (lower === 'pi') return 'Math.PI';
+
+    // Find the exact property in Math, respecting its original casing
+    const mathProp = mathProps.find(p => p.toLowerCase() === lower);
+    if (mathProp) {
+      return `Math.${mathProp}`;
+    }
+    return match;
+  });
+
   try {
+    // Now that it's sanitized and verified, it is safe to evaluate
     return new Function('t', `try { return ${jsExpr}; } catch(e) { return 0; }`);
   } catch(e) {
     console.warn("Snorb math compilation failed for:", expr, e);
@@ -279,7 +302,6 @@ export function deserializeMap(text) {
     if (data.customBuildingRegistry) {
        customBuildingRegistry.length = 0;
        customBuildingRegistry.push(...data.customBuildingRegistry);
-       customBuildingRegistry.forEach(url => { if(url) loadCustomTexture(url); });
     }
 
     extrusions.length = 0;
@@ -300,11 +322,9 @@ export function deserializeMap(text) {
     mapSettings.waterLevel = parseInt(data.map.waterLevel || 86);
     const wEl = document.getElementById('waterLevel');
     if (wEl) wEl.value = mapSettings.waterLevel;
-    updatePaletteTexture();
 
     appState.showGrid = data.map.showGrid !== 'false';
     appState.showUnderground = data.map.showUnderground === 'true';
-    updateViewMenuUI();
 
     if (data.brush.radius) {
       brush.radius = parseInt(data.brush.radius);
@@ -314,12 +334,6 @@ export function deserializeMap(text) {
       if (rEl) rEl.value = brush.radius;
       if (sEl) sEl.value = brush.smooth;
     }
-
-    // Trigger GPU Rebuilds
-    uploadElevations();
-    rebuildExtrusionBuffers();
-    rebuildCubeBuffers();
-    rebuildBuildingInstances();
     return true;
   } catch (e) {
     console.error("Failed to parse map text data", e);
@@ -355,11 +369,9 @@ function deserializeMapJSON(data) {
     mapSettings.waterLevel = data.waterLevel || 86;
     const wEl = document.getElementById('waterLevel');
     if (wEl) wEl.value = mapSettings.waterLevel;
-    updatePaletteTexture();
 
     if (data.showGrid !== undefined) appState.showGrid = data.showGrid;
     if (data.showUnderground !== undefined) appState.showUnderground = data.showUnderground;
-    updateViewMenuUI();
 
     if (data.brush) {
       brush.radius = data.brush.radius;
@@ -370,10 +382,6 @@ function deserializeMapJSON(data) {
       if (sEl) sEl.value = brush.smooth;
     }
 
-    uploadElevations();
-    rebuildExtrusionBuffers();
-    rebuildCubeBuffers();
-    rebuildBuildingInstances();
     return true;
   } catch (e) {
     console.error("Failed to parse map data JSON", e);
@@ -391,63 +399,3 @@ export function resizeMapState(width, height) {
   appState.activeExtrusion = null;
 }
 
-// --- 2. Local Storage Implementation ---
-let saveTimeout = null;
-export function saveMapToLocal() {
-  if (saveTimeout) clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => {
-    const dataText = serializeMap();
-    localStorage.setItem('snorb_map_data', dataText);
-    saveTimeout = null;
-  }, 500);
-}
-
-export function loadMapFromLocal() {
-  const saved = localStorage.getItem('snorb_map_data');
-  if (!saved) return false;
-  return deserializeMap(saved);
-}
-
-// --- 3. File I/O (Download/Upload) ---
-export function downloadMapFile() {
-  const dataText = serializeMap();
-  const blob = new Blob([dataText], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `map_${new Date().toISOString().slice(0,10)}.snorb`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-export function uploadMapFile() {
-  return new Promise((resolve, reject) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.txt,.json,.snorb,text/plain,application/json';
-
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) {
-        resolve(false);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const success = deserializeMap(event.target.result);
-          saveMapToLocal();
-          resolve(success);
-        } catch (err) {
-          reject(err);
-        }
-      };
-      reader.onerror = (err) => reject(err);
-      reader.readAsText(file);
-    };
-
-    input.click();
-  });
-}

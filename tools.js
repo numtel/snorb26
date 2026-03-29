@@ -30,7 +30,7 @@ import {
   rebuildExtrusionBuffers,
   rebuildCubeBuffers,
 } from './renderer.js';
-import { saveMapToLocal } from './state.js';
+import { saveMapToLocal } from './main.js';
 
 export function seedDemo() {
   const cx = Math.floor(GRID_W * 0.5), cy = Math.floor(GRID_H * 0.5);
