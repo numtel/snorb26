@@ -19,6 +19,8 @@ __DATA__
 
 ## 2. Text Blocks
 
+> **Note to Editors:** Comments can be added using standard `//` line prepends and will be preserved.
+
 ### `map`
 Defines the global environment and grid dimensions.
 * **version**: Currently, 2. The original version 1 was the JSON format.

@@ -155,11 +155,48 @@ export function compileMath(expr) {
 // --- 1. Core Serialization (Custom CSS-Like Format) ---
 
 export function serializeMap() {
-  let out = `map {\n  version: 2;\n  width: ${GRID_W};\n  height: ${GRID_H};\n  waterLevel: ${mapSettings.waterLevel};\n  showGrid: ${appState.showGrid};\n  showUnderground: ${appState.showUnderground};\n}\n\n`;
+  // Helper to neatly structure blocks and inject their associated comments
+  const formatBlock = (type, stateObj, props) => {
+    let blockOut = `${type} {\n`;
+    const comments = stateObj._comments || {};
+    
+    props.forEach(([key, val]) => {
+      if (comments[key]) {
+        // Indent multi-line comments properly
+        blockOut += `  ${comments[key].replace(/\n/g, '\n  ')}\n`;
+      }
+      blockOut += `  ${key}: ${val};\n`;
+    });
+    
+    // Catch-all for comments that were sitting at the very bottom of a block
+    if (comments['_trailing']) {
+      blockOut += `  ${comments['_trailing'].replace(/\n/g, '\n  ')}\n`;
+    }
+    blockOut += `}\n\n`;
+    return blockOut;
+  };
 
-  out += `camera {\n  panX: ${camera.targetPanX};\n  panY: ${camera.targetPanY};\n  zoom: ${camera.targetZoom};\n  tilt: ${camera.targetTilt};\n  rotation: ${camera.rotation};\n}\n\n`;
+  let out = formatBlock('map', mapSettings, [
+    ['version', 2],
+    ['width', GRID_W],
+    ['height', GRID_H],
+    ['waterLevel', mapSettings.waterLevel],
+    ['showGrid', appState.showGrid],
+    ['showUnderground', appState.showUnderground]
+  ]);
 
-  out += `brush {\n  radius: ${brush.radius};\n  smooth: ${brush.smooth};\n}\n\n`;
+  out += formatBlock('camera', camera, [
+    ['panX', camera.targetPanX],
+    ['panY', camera.targetPanY],
+    ['zoom', camera.targetZoom],
+    ['tilt', camera.targetTilt],
+    ['rotation', camera.rotation]
+  ]);
+
+  out += formatBlock('brush', brush, [
+    ['radius', brush.radius],
+    ['smooth', brush.smooth]
+  ]);
 
   if (customBuildingRegistry.length > 0) {
     out += `customBuildings {\n`;
@@ -168,40 +205,46 @@ export function serializeMap() {
   }
 
   cubes.forEach(c => {
-    out += `cube {\n  x: ${c.x};\n  y: ${c.y};\n  w: ${c.w};\n  l: ${c.l !== undefined ? c.l : c.w};\n  h: ${c.h};\n  r: ${c.r || 0};\n  c: ${c.c.join(', ')};\n`;
+    const props = [
+      ['x', c.x], ['y', c.y], ['w', c.w],
+      ['l', c.l !== undefined ? c.l : c.w],
+      ['h', c.h], ['r', c.r || 0], ['c', c.c.join(', ')]
+    ];
     if (c.rawDeltas) {
-      if (c.rawDeltas.x) out += `  dx: ${c.rawDeltas.x};\n`;
-      if (c.rawDeltas.y) out += `  dy: ${c.rawDeltas.y};\n`;
-      if (c.rawDeltas.w) out += `  dw: ${c.rawDeltas.w};\n`;
-      if (c.rawDeltas.l) out += `  dl: ${c.rawDeltas.l};\n`;
-      if (c.rawDeltas.h) out += `  dh: ${c.rawDeltas.h};\n`;
-      if (c.rawDeltas.r) out += `  dr: ${c.rawDeltas.r};\n`;
-      if (c.rawDeltas.c) out += `  dc: ${c.rawDeltas.c};\n`;
+      if (c.rawDeltas.x) props.push(['dx', c.rawDeltas.x]);
+      if (c.rawDeltas.y) props.push(['dy', c.rawDeltas.y]);
+      if (c.rawDeltas.w) props.push(['dw', c.rawDeltas.w]);
+      if (c.rawDeltas.l) props.push(['dl', c.rawDeltas.l]);
+      if (c.rawDeltas.h) props.push(['dh', c.rawDeltas.h]);
+      if (c.rawDeltas.r) props.push(['dr', c.rawDeltas.r]);
+      if (c.rawDeltas.c) props.push(['dc', c.rawDeltas.c]);
     }
-    out += `}\n\n`;
+    out += formatBlock('cube', c, props);
   });
 
   extrusions.forEach(ext => {
-    out += `path {\n  width: ${ext.width};\n  height: ${ext.height};\n  altitude: ${ext.altitude || 0};\n  color: ${ext.color.join(', ')};\n  points: ${ext.points.map(p => `${p.x},${p.y}`).join(' | ')};\n`;
+    const props = [
+      ['width', ext.width], ['height', ext.height],
+      ['altitude', ext.altitude || 0], ['color', ext.color.join(', ')],
+      ['points', ext.points.map(p => `${p.x},${p.y}`).join(' | ')]
+    ];
     if (ext.rawDeltas) {
-      if (ext.rawDeltas.w) out += `  dw: ${ext.rawDeltas.w};\n`;
-      if (ext.rawDeltas.h) out += `  dh: ${ext.rawDeltas.h};\n`;
-      if (ext.rawDeltas.a) out += `  da: ${ext.rawDeltas.a};\n`;
-      if (ext.rawDeltas.c) out += `  dc: ${ext.rawDeltas.c};\n`;
-      if (ext.rawDeltas.p) out += `  dp: ${ext.rawDeltas.p};\n`;
+      if (ext.rawDeltas.w) props.push(['dw', ext.rawDeltas.w]);
+      if (ext.rawDeltas.h) props.push(['dh', ext.rawDeltas.h]);
+      if (ext.rawDeltas.a) props.push(['da', ext.rawDeltas.a]);
+      if (ext.rawDeltas.c) props.push(['dc', ext.rawDeltas.c]);
+      if (ext.rawDeltas.p) props.push(['dp', ext.rawDeltas.p]);
     }
-    out += `}\n\n`;
+    out += formatBlock('path', ext, props);
   });
 
   out += `__DATA__\n`;
 
-  // Pack elevations and buildingAt into a single binary buffer for compression
   const binLen = GRID_W * GRID_H;
   const combined = new Uint8Array(binLen * 2);
   combined.set(elevations, 0);
   combined.set(buildingAt, binLen);
 
-  // Fast Uint8Array to Base64 in chunks (avoids stack overflow)
   let binary = '';
   const chunk = 8192;
   for (let i = 0; i < combined.length; i += chunk) {
@@ -215,7 +258,6 @@ export function serializeMap() {
 export function deserializeMap(text) {
   if (!text || typeof text !== 'string') return false;
 
-  // Backward compatibility for old JSON saves
   if (text.trim().startsWith('{')) {
       try {
           return deserializeMapJSON(JSON.parse(text));
@@ -231,25 +273,75 @@ export function deserializeMap(text) {
     const blockRegex = /(\w+)\s*{([^}]+)}/g;
     let match;
     
-    // Parse the CSS-like text blocks
     while ((match = blockRegex.exec(blocksText)) !== null) {
       const type = match[1];
       const content = match[2];
       const props = {};
 
-      // Strip out comments like `// Fluctuate the redness` so they don't corrupt properties
-      const cleanContent = content.replace(/\/\/.*$/gm, '');
-      cleanContent.split(';').forEach(line => {
-        const colon = line.indexOf(':');
-        if (colon === -1) return;
-        props[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
+      const lines = content.split('\n');
+      let currentComment = [];
+      
+      lines.forEach(line => {
+        let codePart = line;
+        let commentPart = '';
+        
+        let commentIdx = line.indexOf('//');
+        // Ignore // if it's part of a URL scheme (://)
+        if (commentIdx !== -1 && commentIdx > 0 && line[commentIdx - 1] === ':') {
+          commentIdx = line.indexOf('//', commentIdx + 2);
+        }
+        
+        if (commentIdx !== -1) {
+          codePart = line.slice(0, commentIdx);
+          commentPart = line.slice(commentIdx).trim();
+        }
+        
+        // Full line comment
+        if (commentPart && !codePart.trim()) {
+          currentComment.push(commentPart);
+          return;
+        }
+        
+        // Extract regular properties
+        const segments = codePart.split(';');
+        segments.forEach(seg => {
+          const colon = seg.indexOf(':');
+          if (colon === -1) return;
+          
+          const key = seg.slice(0, colon).trim();
+          const val = seg.slice(colon + 1).trim();
+          if (key) {
+            props[key] = val;
+            if (currentComment.length > 0) {
+              if (!props._comments) props._comments = {};
+              props._comments[key] = currentComment.join('\n');
+              currentComment = [];
+            }
+          }
+        });
+        
+        // Trailing comment placed at the end of a line with executable code
+        if (commentPart && codePart.trim()) {
+          const lastKey = Object.keys(props).filter(k => k !== '_comments').pop();
+          if (lastKey) {
+            if (!props._comments) props._comments = {};
+            props._comments[lastKey] = (props._comments[lastKey] ? props._comments[lastKey] + '\n' : '') + commentPart;
+          }
+        }
       });
+      
+      if (currentComment.length > 0) {
+        if (!props._comments) props._comments = {};
+        props._comments['_trailing'] = currentComment.join('\n');
+      }
 
       if (type === 'map') Object.assign(data.map, props);
       else if (type === 'camera') Object.assign(data.camera, props);
       else if (type === 'brush') Object.assign(data.brush, props);
       else if (type === 'customBuildings') {
-        Object.keys(props).forEach(k => { data.customBuildingRegistry[parseInt(k)] = props[k]; });
+        Object.keys(props).forEach(k => {
+          if (k !== '_comments') data.customBuildingRegistry[parseInt(k)] = props[k];
+        });
       }
       else if (type === 'cube') {
         const cube = {
@@ -273,10 +365,8 @@ export function deserializeMap(text) {
             hasAnim = true;
         }
 
-        if (hasAnim) {
-            cube.rawDeltas = rawDeltas;
-            cube.fns = fns;
-        }
+        if (hasAnim) { cube.rawDeltas = rawDeltas; cube.fns = fns; }
+        if (props._comments) cube._comments = props._comments;
 
         data.cubes.push(cube);
       }
@@ -314,10 +404,8 @@ export function deserializeMap(text) {
             hasAnim = true;
         }
 
-        if (hasAnim) {
-            pathObj.rawDeltas = rawDeltas;
-            pathObj.fns = fns;
-        }
+        if (hasAnim) { pathObj.rawDeltas = rawDeltas; pathObj.fns = fns; }
+        if (props._comments) pathObj._comments = props._comments;
 
         data.extrusions.push(pathObj);
       }
@@ -327,7 +415,6 @@ export function deserializeMap(text) {
     const gh = parseInt(data.map.height || 256);
     resizeMapState(gw, gh);
 
-    // Unpack Binary Data
     if (b64) {
       const binary = atob(b64);
       const binLen = gw * gh;
@@ -337,7 +424,6 @@ export function deserializeMap(text) {
       }
     }
 
-    // Restore Collections
     if (data.customBuildingRegistry) {
        customBuildingRegistry.length = 0;
        customBuildingRegistry.push(...data.customBuildingRegistry);
@@ -348,17 +434,17 @@ export function deserializeMap(text) {
     cubes.length = 0;
     cubes.push(...data.cubes);
 
-    // Restore Camera
     if (data.camera.zoom) {
       camera.panX = camera.targetPanX = parseFloat(data.camera.panX);
       camera.panY = camera.targetPanY = parseFloat(data.camera.panY);
       camera.zoom = camera.targetZoom = parseFloat(data.camera.zoom);
       camera.tilt = camera.targetTilt = parseFloat(data.camera.tilt || 1.0);
       camera.rotation = camera.targetRotation = parseFloat(data.camera.rotation || 0);
+      if (data.camera._comments) camera._comments = data.camera._comments;
     }
 
-    // Restore Settings
     mapSettings.waterLevel = parseInt(data.map.waterLevel || 86);
+    if (data.map._comments) mapSettings._comments = data.map._comments;
     const wEl = document.getElementById('waterLevel');
     if (wEl) wEl.value = mapSettings.waterLevel;
 
@@ -368,6 +454,7 @@ export function deserializeMap(text) {
     if (data.brush.radius) {
       brush.radius = parseInt(data.brush.radius);
       brush.smooth = parseFloat(data.brush.smooth);
+      if (data.brush._comments) brush._comments = data.brush._comments;
       const rEl = document.getElementById('brushSize');
       const sEl = document.getElementById('brushSmooth');
       if (rEl) rEl.value = brush.radius;
