@@ -57,6 +57,7 @@ Defines a primitive 3D box.
 ### `path`
 Defines an extruded 3D polyline (roads, fences, paths).
 * **width / height**: Thickness and verticality of the extrusion.
+* **altitude**: Float value position adjustment above or below terrain
 * **color**: `R, G, B` floats.
 * **points**: A pipe-separated (`|`) list of coordinates. 
     * *Example:* `10,10 | 20,10 | 20,20`
