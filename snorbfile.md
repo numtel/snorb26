@@ -58,6 +58,10 @@ Defines an extruded 3D polyline (roads, fences, paths).
 * **color**: `R, G, B` floats.
 * **points**: A pipe-separated (`|`) list of coordinates. 
     * *Example:* `10,10 | 20,10 | 20,20`
+* **dw / dh / da**: (Optional) Math expressions for delta Width, Height, and Altitude evaluated dynamically over time `t` (in seconds).
+* **dc**: (Optional) Three comma-separated math expressions for color channel deltas.
+* **dp**: (Optional) Math expressions for delta values of points. Expected as a pipe-separated (`|`) list of `dx,dy` math pairs corresponding exactly to the number of nodes in `points`. Empty pairs are allowed if you only want to move specific nodes.
+    * *Example (Wobbling middle node):* `0,0 | 10*sin(t), 10*cos(t) | 0,0`
 
 ---
 

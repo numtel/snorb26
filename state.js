@@ -182,11 +182,19 @@ export function serializeMap() {
   });
 
   extrusions.forEach(ext => {
-    out += `path {\n  width: ${ext.width};\n  height: ${ext.height};\n  altitude: ${ext.altitude || 0};\n  color: ${ext.color.join(', ')};\n  points: ${ext.points.map(p => `${p.x},${p.y}`).join(' | ')};\n}\n\n`;
+    out += `path {\n  width: ${ext.width};\n  height: ${ext.height};\n  altitude: ${ext.altitude || 0};\n  color: ${ext.color.join(', ')};\n  points: ${ext.points.map(p => `${p.x},${p.y}`).join(' | ')};\n`;
+    if (ext.rawDeltas) {
+      if (ext.rawDeltas.w) out += `  dw: ${ext.rawDeltas.w};\n`;
+      if (ext.rawDeltas.h) out += `  dh: ${ext.rawDeltas.h};\n`;
+      if (ext.rawDeltas.a) out += `  da: ${ext.rawDeltas.a};\n`;
+      if (ext.rawDeltas.c) out += `  dc: ${ext.rawDeltas.c};\n`;
+      if (ext.rawDeltas.p) out += `  dp: ${ext.rawDeltas.p};\n`;
+    }
+    out += `}\n\n`;
   });
 
   out += `__DATA__\n`;
-  
+
   // Pack elevations and buildingAt into a single binary buffer for compression
   const binLen = GRID_W * GRID_H;
   const combined = new Uint8Array(binLen * 2);
@@ -273,14 +281,45 @@ export function deserializeMap(text) {
         data.cubes.push(cube);
       }
       else if (type === 'path') {
-        data.extrusions.push({
+        const pathObj = {
           width: parseFloat(props.width), height: parseFloat(props.height), altitude: parseFloat(props.altitude),
           color: props.color.split(',').map(Number),
           points: props.points.split('|').map(p => {
               const [x,y] = p.split(',').map(Number);
               return {x, y};
           })
-        });
+        };
+
+        const rawDeltas = {};
+        const fns = {};
+        let hasAnim = false;
+
+        if (props.dw) { rawDeltas.w = props.dw; fns.w = compileMath(props.dw); hasAnim = true; }
+        if (props.dh) { rawDeltas.h = props.dh; fns.h = compileMath(props.dh); hasAnim = true; }
+        if (props.da) { rawDeltas.a = props.da; fns.a = compileMath(props.da); hasAnim = true; }
+        if (props.dc) {
+            rawDeltas.c = props.dc;
+            fns.c = props.dc.split(',').map(s => compileMath(s.trim()));
+            hasAnim = true;
+        }
+        if (props.dp) {
+            rawDeltas.p = props.dp;
+            fns.p = props.dp.split('|').map(p => {
+                const parts = p.split(',');
+                return {
+                    x: parts[0] && parts[0].trim() ? compileMath(parts[0].trim()) : null,
+                    y: parts[1] && parts[1].trim() ? compileMath(parts[1].trim()) : null
+                };
+            });
+            hasAnim = true;
+        }
+
+        if (hasAnim) {
+            pathObj.rawDeltas = rawDeltas;
+            pathObj.fns = fns;
+        }
+
+        data.extrusions.push(pathObj);
       }
     }
 

@@ -314,9 +314,11 @@ export function rebuildBuildingInstances() {
   }
 }
 
-export function rebuildExtrusionBuffers() {
+export function rebuildExtrusionBuffers(now = 0) {
     const verts = [];
     const pushVert = (x, y, zOffset, nx, ny, nz, r, g, b) => verts.push(x, y, zOffset, nx, ny, nz, r, g, b);
+
+    const t = now * 0.001;
 
     const catmullRom = (p0, p1, p2, p3, t) => {
         const t2 = t * t, t3 = t2 * t;
@@ -330,9 +332,30 @@ export function rebuildExtrusionBuffers() {
     for (const ext of extrusions) {
         if (ext.points.length < 2) continue;
 
+        // Evaluate dynamic deltas
+        const ew = Math.max(0.01, ext.width + (ext.fns?.w ? ext.fns.w(t) : 0));
+        const eh = Math.max(0.0, ext.height + (ext.fns?.h ? ext.fns.h(t) : 0));
+        const ea = (ext.altitude || 0.0) + (ext.fns?.a ? ext.fns.a(t) : 0);
+
+        const ec = [...ext.color];
+        if (ext.fns?.c) {
+            ec[0] = Math.max(0, Math.min(1, ec[0] + (ext.fns.c[0] ? ext.fns.c[0](t) : 0)));
+            ec[1] = Math.max(0, Math.min(1, ec[1] + (ext.fns.c[1] ? ext.fns.c[1](t) : 0)));
+            ec[2] = Math.max(0, Math.min(1, ec[2] + (ext.fns.c[2] ? ext.fns.c[2](t) : 0)));
+        }
+
+        const epts = ext.points.map((pt, i) => {
+            let dx = 0, dy = 0;
+            if (ext.fns?.p && ext.fns.p[i]) {
+                if (ext.fns.p[i].x) dx = ext.fns.p[i].x(t);
+                if (ext.fns.p[i].y) dy = ext.fns.p[i].y(t);
+            }
+            return { x: pt.x + dx, y: pt.y + dy };
+        });
+
         const dense = [];
         const steps = 12;
-        const pts = [ext.points[0], ...ext.points, ext.points[ext.points.length-1]];
+        const pts = [epts[0], ...epts, epts[epts.length-1]];
         for (let i = 1; i < pts.length - 2; i++) {
             const iterations = (i === pts.length - 3) ? steps + 1 : steps;
             for (let s = 0; s < iterations; s++) {
@@ -341,9 +364,9 @@ export function rebuildExtrusionBuffers() {
         }
 
         const rings = [];
-        const w = ext.width / 2;
-        const h = ext.height;
-        const alt = ext.altitude || 0.0;
+        const w = ew / 2;
+        const h = eh;
+        const alt = ea;
 
         for (let i = 0; i < dense.length; i++) {
             const p = dense[i];
@@ -368,7 +391,7 @@ export function rebuildExtrusionBuffers() {
             });
         }
 
-        const c = ext.color;
+        const c = ec;
         for (let i = 0; i < rings.length - 1; i++) {
             const r0 = rings[i], r1 = rings[i+1];
 
@@ -596,6 +619,12 @@ export function draw(now) {
   }
 
   // DRAW EXTRUSIONS
+  let needsExtrudeRebuild = false;
+  for (let i = 0; i < extrusions.length; i++) {
+      if (extrusions[i].fns) { needsExtrudeRebuild = true; break; }
+  }
+  if (needsExtrudeRebuild) rebuildExtrusionBuffers(now);
+
   if (extrudeVertCount > 0) {
       gl.useProgram(extrudeProgram);
       gl.bindVertexArray(extrudeVao);
