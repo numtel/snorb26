@@ -250,7 +250,10 @@ export function serializeMap() {
   for (let i = 0; i < combined.length; i += chunk) {
     binary += String.fromCharCode.apply(null, combined.subarray(i, i + chunk));
   }
-  out += btoa(binary);
+  // Convert to base64 and split into chunks of 300 characters
+  const base64Data = btoa(binary);
+  const formattedB64 = base64Data.match(/.{1,300}/g).join('\n');
+  out += formattedB64;
 
   return out;
 }
@@ -267,7 +270,8 @@ export function deserializeMap(text) {
   try {
     const parts = text.split('__DATA__');
     const blocksText = parts[0];
-    const b64 = parts[1] ? parts[1].trim() : '';
+    // Strip all whitespaces/newlines from base64 data to prevent atob failures
+    const b64 = parts[1] ? parts[1].replace(/\s/g, '') : '';
 
     const data = { extrusions: [], cubes: [], customBuildingRegistry: [], camera: {}, map: {}, brush: {} };
     const blockRegex = /(\w+)\s*{([^}]+)}/g;
