@@ -356,7 +356,7 @@ export function editPathDown(tx, ty, button) {
 
     // Find the closest existing node first (Magnetic grab)
     let clickedNodeIdx = -1;
-    let minNodeDist = 4.0; // 2 tiles radius tolerance for grabbing a node
+    let minNodeDist = 25.0; // 5-tile radius
 
     if (appState.activeExtrusion) {
         const pts = appState.activeExtrusion.points;
@@ -593,7 +593,7 @@ export function editCubeDown(tx, ty, button) {
 
     let clickedIdx = -1;
     let handleIdx = -1;
-    let minDist = 4.0; // Tolerance for clicking handles
+    let minDist = 25.0; // 5-tile radius
 
     // 1. Check if clicking handles of the currently active cube
     if (appState.activeCubeIndex >= 0 && cubes[appState.activeCubeIndex]) {
@@ -601,7 +601,7 @@ export function editCubeDown(tx, ty, button) {
         const hw = c.w / 2, hl = (c.l !== undefined ? c.l : c.w) / 2;
         const c_rot = Math.cos(c.r || 0), s_rot = Math.sin(c.r || 0);
         const rot = (lx, ly) => ({ x: c.x + lx*c_rot - ly*s_rot, y: c.y + lx*s_rot + ly*c_rot });
-        
+
         const handles = [
             rot(0, 0),       // 0: Center
             rot(-hw, -hl),   // 1: Top-Left
