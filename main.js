@@ -60,6 +60,9 @@ const hud = document.getElementById('hud');
 initWebGL(document.getElementById('scene'));
 if (!loadMapFromLocal()) {
   seedDemo();
+  // Center the view and zoom out completely on first load
+  setTileInCenter(GRID_W / 2, GRID_H / 2);
+  camera.targetZoom = camera.minZoom;
 } else {
   // If we loaded from local, we must tell the renderer to update its buffers
   updatePaletteTexture();
