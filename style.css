@@ -1,4 +1,5 @@
 body { margin:0; overflow:hidden; background:#000; }
+body.exit * { display:none; }
 body, button, label { font: 1rem sans-serif; }
 body.window-inactive canvas {
   outline: 5px solid red;

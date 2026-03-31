@@ -367,6 +367,12 @@ function menuClicks(command, tool) {
       break;
     case 'open-file': uploadMapFile(); break;
     case 'save-file': downloadMapFile(); break;
+    case 'exit':
+      document.body.classList.add('exit');
+      setTimeout(() => {
+        document.body.classList.remove('exit');
+      }, 3000);
+      break;
     case 'show-help': document.getElementById('helpDialog').showModal(); break;
     case 'show-about': document.getElementById('aboutDialog').showModal(); break;
     case 'pan-up': camera.targetPanY -= moveSpeed * 0.5; break;
