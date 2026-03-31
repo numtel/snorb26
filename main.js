@@ -367,6 +367,8 @@ function menuClicks(command, tool) {
       break;
     case 'open-file': uploadMapFile(); break;
     case 'save-file': downloadMapFile(); break;
+    case 'show-help': document.getElementById('helpDialog').showModal(); break;
+    case 'show-about': document.getElementById('aboutDialog').showModal(); break;
     case 'pan-up': camera.targetPanY -= moveSpeed * 0.5; break;
     case 'pan-down': camera.targetPanY += moveSpeed * 0.5; break;
     case 'pan-left': camera.targetPanX -= moveSpeed; break;

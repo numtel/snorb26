@@ -59,8 +59,8 @@
         <label class="ctl">Color <input id="exColor" type="color" value="#808080"></label>
         <div class="hr"></div>
         <button data-tool="cube" data-key="K">Place Cube</button>
-        <button data-tool="edit-cube" data-key="J">Edit Box</button>
-        <button data-tool="remove-cube" data-key="L">Remove Box</button>
+        <button data-tool="edit-cube" data-key="J">Edit Cube</button>
+        <button data-tool="remove-cube" data-key="L">Remove Cube</button>
         <label class="ctl">Width <input id="cbWidth" type="range" min="1" max="100" step="1" value="4"></label>
         <label class="ctl">Length <input id="cbLength" type="range" min="1" max="100" step="1" value="4"></label>
         <label class="ctl">Height <input id="cbHeight" type="range" min="1" max="100" step="1" value="10"></label>
@@ -91,8 +91,48 @@
         <button data-command="toggle-underground" data-key="U">Underground</button>
       </dialog>
     </div>
+    <div class="menu-container">
+      <button class="menu-trigger">Help</button>
+      <dialog class="menu">
+        <button data-command="show-help">Help Topics...</button>
+        <div class="hr"></div>
+        <button data-command="show-about">About Snorb...</button>
+      </dialog>
+    </div>
   </div>
 
+  <dialog id="helpDialog">
+    <div class="content">
+      <h2>How to use Snorb</h2>
+      <p>Snorb is a browser-based 3D sculpting and mapping tool.</p>
+      <ul>
+        <li><b>Sculpting:</b> Use Raise, Lower, and Smooth to shape the terrain using the brushes. The Level terrain tool operates over a rectangular area by clicking and dragging.</li>
+        <li><b>Forest, Custom Build, Demolish:</b> Place/remove Sprites on the terrain. Will randomly select a image URL from the comma-separated list in the input field. For URLs on other domains, ensure proper CORS permissions.</li>
+        <li><b>Paths:</b> Paths maybe be built on, above, or below the terrain. Drag nodes with Edit Path tool. Right click or double click to remove nodes.</li>
+        <li><b>Cubes:</b> Built at the level of each of its corners.</li>
+        <li><b>Shortcuts:</b> Use the keyboard shortcuts for quick access to tools and view commands.</li>
+        <li><b>Saving:</b> Maps automatically save to your browser's Local Storage, but you can also export them as <code>.snorb</code> files via the File menu.</li>
+        <li><b>Animations:</b> Not editable in the web interface, must be manually coded in the <a href="https://github.com/numtel/snorb26/blob/main/snorbfile.md" target="_blank" rel="noopener">snorbfiles</a>.</li>
+      </ul>
+      <form method="dialog">
+        <button class="button">Close</button>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="aboutDialog">
+    <div class="content">
+      <h2>About Snorb26</h2>
+      <p>Sculpt your way.</p>
+      <p>Author: sen green &lt;<a href="mailto:ben@latenightsketches.com">ben@latenightsketches.com</a>&gt;</p>
+      <p>
+        <a href="https://github.com/numtel/snorb26" target="_blank" rel="noopener">View Source on GitHub</a>
+      </p>
+      <form method="dialog" style="margin-top: 15px;">
+        <button class="button">Ok</button>
+      </form>
+    </div>
+  </dialog>
   <script type="module" src="main.js"></script>
 </body>
 </html>
