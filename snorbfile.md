@@ -66,6 +66,12 @@ Defines an extruded 3D polyline (roads, fences, paths).
 * **dp**: (Optional) Math expressions for delta values of points. Expected as a pipe-separated (`|`) list of `dx,dy` math pairs corresponding exactly to the number of nodes in `points`. Empty pairs are allowed if you only want to move specific nodes.
     * *Example (Wobbling middle node):* `0,0 | 10*sin(t), 10*cos(t) | 0,0`
 
+### `lemming`
+Defines a lemming.
+* **x / y / a / s**: Position, angle, speed
+* **c**: Color as three comma-separated floats (`R, G, B`) from 0.0 to 1.0.
+* **hasBuilt**: Boolean, can only build one cube
+
 ---
 
 ## 3. The Binary Data Section
