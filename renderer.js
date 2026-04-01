@@ -16,14 +16,15 @@
     mapSettings,
     extrusions,
     cubes,
+    lemmings,
   } from './state.js';
   import * as shaders from './shaders.js';
 
   export let gl, canvas;
-  let program, waterProgram, buildProgram, pickProgram, skyProgram, extrudeProgram, editorProgram;
-  let vao, buildVao, buildInstanceBuf, extrudeVao, extrudeBuf, editorVao, editorBuf, cubeVao, cubeBuf;
+  let program, waterProgram, buildProgram, pickProgram, skyProgram, extrudeProgram, editorProgram, lemmingProgram;
+  let vao, buildVao, buildInstanceBuf, extrudeVao, extrudeBuf, editorVao, editorBuf, cubeVao, cubeBuf, lemmingVao, lemmingBuf;
   let elevTex, paletteTex, buildingTex;
-  let U, WU, BU, PU, SU, EU, EDU;
+  let U, WU, BU, PU, SU, EU, EDU, LU;
   let buildInstanceCount = 0;
   export let extrudeVertCount = 0;
   export let cubeVertCount = 0;
@@ -117,6 +118,7 @@
     skyProgram = linkProgram(shaders.vsSky, shaders.fsSky);
     extrudeProgram = linkProgram(shaders.vsExtrude, shaders.fsExtrude);
     editorProgram = linkProgram(shaders.vsEditor, shaders.fsEditor);
+    lemmingProgram = linkProgram(shaders.vsLemming, shaders.fsLemming);
 
     U = getUniforms(program, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_selectedId", "u_hasSelection", "u_outlinePx", "u_levelActive", "u_levelMin", "u_levelMax", "u_alpha"]);
     WU = getUniforms(waterProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_waterLevel", "u_alpha", "u_time"]);
@@ -125,6 +127,7 @@
     SU = getUniforms(skyProgram, ["u_tilt", "u_rotation", "u_pan"]);
     EU = getUniforms(extrudeProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
     EDU = getUniforms(editorProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
+    LU = getUniforms(lemmingProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
 
     setupGeometry();
     setupTextures();
@@ -198,6 +201,13 @@
     gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 36, 8);
     gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 36, 12);
     gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 36, 24);
+
+    lemmingVao = gl.createVertexArray();
+    lemmingBuf = gl.createBuffer();
+    gl.bindVertexArray(lemmingVao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, lemmingBuf);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 20, 0); // Position
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 20, 8); // Color
   }
 
   function setupTextures() {
@@ -713,6 +723,29 @@ export function draw(now) {
 
       gl.disable(gl.DEPTH_TEST);
       gl.drawArrays(gl.POINTS, 0, 5);
+      gl.enable(gl.DEPTH_TEST);
+  }
+
+  // DRAW LEMMINGS
+  if (lemmings.length > 0) {
+      const arr = new Float32Array(lemmings.length * 5);
+      for (let i = 0; i < lemmings.length; i++) {
+          arr[i*5+0] = lemmings[i].x; arr[i*5+1] = lemmings[i].y;
+          arr[i*5+2] = lemmings[i].c[0]; arr[i*5+3] = lemmings[i].c[1]; arr[i*5+4] = lemmings[i].c[2];
+      }
+      gl.bindBuffer(gl.ARRAY_BUFFER, lemmingBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, arr, gl.DYNAMIC_DRAW);
+
+      gl.useProgram(lemmingProgram);
+      gl.bindVertexArray(lemmingVao);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, elevTex); gl.uniform1i(LU.elevTex, 0);
+      gl.uniform2f(LU.viewSize, canvas.width, canvas.height); gl.uniform2f(LU.pan, camera.panX, camera.panY);
+      gl.uniform1f(LU.zoom, camera.zoom); gl.uniform1f(LU.tileW, TILE_W); gl.uniform1f(LU.tileH, TILE_H * camera.tilt);
+      gl.uniform1f(LU.rotation, camera.rotation);
+      gl.uniform1f(LU.elevStep, ELEV_STEP * parallaxScalar); gl.uniform1i(LU.gridW, GRID_W); gl.uniform1i(LU.gridH, GRID_H);
+
+      gl.disable(gl.DEPTH_TEST);
+      gl.drawArrays(gl.POINTS, 0, lemmings.length);
       gl.enable(gl.DEPTH_TEST);
   }
 

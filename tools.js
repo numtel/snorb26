@@ -20,6 +20,8 @@ import {
   appState,
   cubes,
   cubeSettings,
+  lemmings,
+  mapSettings,
 } from './state.js';
 import {
   canvas,
@@ -689,5 +691,45 @@ export function syncCubeUI(cube) {
         const g = Math.round(cube.c[1] * 255).toString(16).padStart(2, '0');
         const b = Math.round(cube.c[2] * 255).toString(16).padStart(2, '0');
         cEl.value = `#${r}${g}${b}`;
+    }
+}
+
+export function placeLemmingAt(x, y) {
+    lemmings.push({
+        x: x + 0.5,
+        y: y + 0.5,
+        a: Math.random() * Math.PI * 2,           // Angle
+        s: 1.5 + Math.random() * 2.5,             // Speed
+        c: [Math.random(), Math.random(), Math.random()] // Color
+    });
+}
+
+export function updateLemmings(dt) {
+    for (let lem of lemmings) {
+        let nx = lem.x + Math.cos(lem.a) * lem.s * dt;
+        let ny = lem.y + Math.sin(lem.a) * lem.s * dt;
+
+        // Bounce off map edges
+        if (nx < 0 || nx >= GRID_W - 1 || ny < 0 || ny >= GRID_H - 1) {
+            lem.a += Math.PI;
+            continue;
+        }
+
+        const cX = Math.floor(lem.x), cY = Math.floor(lem.y);
+        const nX = Math.floor(nx), nY = Math.floor(ny);
+
+        const currentH = elevations[cY * GRID_W + cX];
+        const nextH = elevations[nY * GRID_W + nX];
+
+        // Turn around if it's a sheer cliff or if it leads into the water
+        if (Math.abs(currentH - nextH) > 5 || nextH <= mapSettings.waterLevel) {
+            lem.a += (Math.random() * Math.PI) + Math.PI / 2;
+        } else {
+            lem.x = nx;
+            lem.y = ny;
+        }
+
+        // Randomly wander slightly
+        if (Math.random() < 0.05) lem.a += (Math.random() - 0.5);
     }
 }

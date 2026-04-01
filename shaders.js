@@ -326,3 +326,57 @@ void main() {
     if(length(pc) > 0.5) discard;
     fragColor = vec4(1.0, 0.85, 0.1, 1.0); // Editor Yellow
 }`;
+
+export const vsLemming = `#version 300 es
+precision highp float;
+layout(location=0) in vec2 a_pos;
+layout(location=1) in vec3 a_color;
+
+uniform vec2 u_viewSize; uniform vec2 u_pan; uniform float u_zoom;
+uniform float u_tileW; uniform float u_tileH; uniform float u_elevStep;
+uniform int u_gridW; uniform int u_gridH; uniform float u_rotation;
+uniform highp usampler2D u_elevTex;
+
+out vec3 v_color;
+
+float getInterpolatedHeight(vec2 pos) {
+    vec2 p = clamp(pos, vec2(0.0), vec2(float(u_gridW - 1), float(u_gridH - 1)));
+    ivec2 i = ivec2(floor(p)); vec2 f = fract(p);
+    float h00 = float(texelFetch(u_elevTex, i, 0).r);
+    float h10 = float(texelFetch(u_elevTex, i + ivec2(1, 0), 0).r);
+    float h01 = float(texelFetch(u_elevTex, i + ivec2(0, 1), 0).r);
+    float h11 = float(texelFetch(u_elevTex, i + ivec2(1, 1), 0).r);
+    float h0 = mix(h00, h10, f.x); float h1 = mix(h01, h11, f.x);
+    return mix(h0, h1, f.y);
+}
+
+void main() {
+    float hV = getInterpolatedHeight(a_pos);
+    vec2 p = a_pos - vec2(float(u_gridW)*0.5, float(u_gridH)*0.5);
+    float c = cos(u_rotation); float s = sin(u_rotation);
+    vec2 r = vec2(p.x * c - p.y * s, p.x * s + p.y * c);
+
+    vec2 world = vec2((r.x - r.y) * (u_tileW * 0.5), (r.x + r.y) * (u_tileH * 0.5));
+    float depthZ = 1.0 - ((r.x + r.y + float(u_gridW + u_gridH)*0.5) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006 - 0.002;
+
+    world.y -= hV * u_elevStep;
+
+    vec2 clip = (((world - u_pan) * u_zoom + (u_viewSize * 0.5)) / u_viewSize) * 2.0 - 1.0; clip.y *= -1.0;
+    gl_Position = vec4(clip, depthZ, 1.0);
+
+    // Scale size with camera zoom, bob up and down over time
+    gl_PointSize = max(8.0, 24.0 * u_zoom);
+    v_color = a_color;
+}`;
+
+export const fsLemming = `#version 300 es
+precision highp float;
+in vec3 v_color;
+out vec4 fragColor;
+void main() {
+    vec2 pc = gl_PointCoord - vec2(0.5);
+    if(length(pc) > 0.5) discard;
+    // Darker outline for the little dudes
+    vec3 col = length(pc) > 0.35 ? v_color * 0.5 : v_color;
+    fragColor = vec4(col, 1.0);
+}`;

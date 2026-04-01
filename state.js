@@ -14,6 +14,8 @@ export const extrusionSettings = { width: 0.5, height: 2.0, altitude: 0.0, color
 export const cubes = [];
 export const cubeSettings = { width: 4.0, length: 4.0, height: 10.0, rotation: 0.0, color: [1.0, 0.26, 0.26] };
 
+export const lemmings = [];
+
 export const SC3K_COLOR_STOPS = [
   { t:   0, c:[  0/255,  20/255,  60/255] },
   { t:  28, c:[  0/255,  55/255, 110/255] },
@@ -526,6 +528,7 @@ export function resizeMapState(width, height) {
   buildingAt = new Uint8Array(GRID_W * GRID_H);
   extrusions.length = 0;
   cubes.length = 0;
+  lemmings.length = 0;
   appState.activeExtrusion = null;
 }
 

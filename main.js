@@ -53,6 +53,8 @@ import {
   removeCubeAt,
   editCubeDown,
   editCubeDrag,
+  placeLemmingAt,
+  updateLemmings,
 } from './tools.js';
 
 // Setup Map & DOM Elements
@@ -602,6 +604,8 @@ canvas.addEventListener("pointerdown", (e) => {
       paintStroke.pointerId = e.pointerId;
     } else if (appState.toolMode === 'remove-cube') {
       removeCubeAt(selected.x, selected.y);
+    } else if (appState.toolMode === 'plop-lemming') {
+      placeLemmingAt(selected.x, selected.y);
     }
   });
 
@@ -768,7 +772,13 @@ canvas.addEventListener("wheel", (e) => {
 
 requestPick(canvas.width * 0.5, canvas.height * 0.5); // Initial Selection
 
+let lastLemmingTime = 0;
+
 function tick(now) {
+  const dtLemming = lastLemmingTime ? (now - lastLemmingTime) / 1000 : 0;
+  lastLemmingTime = now;
+  if (dtLemming > 0) updateLemmings(dtLemming);
+
   const l = camera.lerpFactor;
 
   // We need a way to map world back to tile index. Since we have 'selected',
