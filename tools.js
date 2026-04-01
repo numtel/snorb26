@@ -700,7 +700,8 @@ export function placeLemmingAt(x, y) {
         y: y + 0.5,
         a: Math.random() * Math.PI * 2,           // Angle
         s: 1.5 + Math.random() * 2.5,             // Speed
-        c: [Math.random(), Math.random(), Math.random()] // Color
+        c: [Math.random(), Math.random(), Math.random()], // Color
+        hasBuilt: false,
     });
 }
 
@@ -709,7 +710,6 @@ export function updateLemmings(dt) {
         let nx = lem.x + Math.cos(lem.a) * lem.s * dt;
         let ny = lem.y + Math.sin(lem.a) * lem.s * dt;
 
-        // Bounce off map edges
         if (nx < 0 || nx >= GRID_W - 1 || ny < 0 || ny >= GRID_H - 1) {
             lem.a += Math.PI;
             continue;
@@ -717,19 +717,71 @@ export function updateLemmings(dt) {
 
         const cX = Math.floor(lem.x), cY = Math.floor(lem.y);
         const nX = Math.floor(nx), nY = Math.floor(ny);
-
         const currentH = elevations[cY * GRID_W + cX];
         const nextH = elevations[nY * GRID_W + nX];
 
-        // Turn around if it's a sheer cliff or if it leads into the water
-        if (Math.abs(currentH - nextH) > 5 || nextH <= mapSettings.waterLevel) {
+        let hitObstacle = false;
+
+        for (const ext of extrusions) {
+            for (let i = 0; i < ext.points.length - 1; i++) {
+                if (distToSegmentSq({x: nx, y: ny}, ext.points[i], ext.points[i+1]) < Math.pow(ext.width / 2 + 0.2, 2)) {
+                    hitObstacle = true; break;
+                }
+            }
+            if (hitObstacle) break;
+        }
+
+        if (!hitObstacle) {
+            for (const c of cubes) {
+                if (isInsideCube(nx, ny, c)) {
+                    hitObstacle = true; break;
+                }
+            }
+        }
+
+        if (hitObstacle || Math.abs(currentH - nextH) > 5 || nextH <= mapSettings.waterLevel) {
             lem.a += (Math.random() * Math.PI) + Math.PI / 2;
         } else {
             lem.x = nx;
             lem.y = ny;
         }
 
-        // Randomly wander slightly
         if (Math.random() < 0.05) lem.a += (Math.random() - 0.5);
+    }
+
+    let cubesAdded = false;
+    for (let i = 0; i < lemmings.length; i++) {
+        for (let j = i + 1; j < lemmings.length; j++) {
+            let l1 = lemmings[i], l2 = lemmings[j];
+
+            // Skip if either lemming has already built their one house
+            if (l1.hasBuilt || l2.hasBuilt) continue;
+
+            let dSq = (l1.x - l2.x)**2 + (l1.y - l2.y)**2;
+            if (dSq < 0.5) {
+                let mx = (l1.x + l2.x) / 2;
+                let my = (l1.y + l2.y) / 2;
+                let size = 1 + Math.random() * 2.5;
+
+                cubes.push({
+                    x: mx, y: my,
+                    w: size, l: size,
+                    h: 2 + Math.random() * 6,
+                    r: Math.random() * Math.PI,
+                    c: [ (l1.c[0] + l2.c[0]) / 2, (l1.c[1] + l2.c[1]) / 2, (l1.c[2] + l2.c[2]) / 2 ]
+                });
+                cubesAdded = true;
+
+                l1.a += Math.PI; l2.a += Math.PI;
+
+                // Flag them so they never build again
+                l1.hasBuilt = true; l2.hasBuilt = true;
+            }
+        }
+    }
+
+    if (cubesAdded) {
+        rebuildCubeBuffers();
+        saveMapToLocal();
     }
 }

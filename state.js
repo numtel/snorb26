@@ -240,6 +240,14 @@ export function serializeMap() {
     out += formatBlock('path', ext, props);
   });
 
+  lemmings.forEach(l => {
+    const props = [
+      ['x', l.x], ['y', l.y], ['a', l.a], ['s', l.s],
+      ['c', l.c.join(', ')], ['hasBuilt', l.hasBuilt || false]
+    ];
+    out += formatBlock('lemming', l, props);
+  });
+
   out += `__DATA__\n`;
 
   const binLen = GRID_W * GRID_H;
@@ -275,7 +283,15 @@ export function deserializeMap(text) {
     // Strip all whitespaces/newlines from base64 data to prevent atob failures
     const b64 = parts[1] ? parts[1].replace(/\s/g, '') : '';
 
-    const data = { extrusions: [], cubes: [], customBuildingRegistry: [], camera: {}, map: {}, brush: {} };
+    const data = {
+      extrusions: [],
+      cubes: [],
+      lemmings: [],
+      customBuildingRegistry: [],
+      camera: {},
+      map: {},
+      brush: {},
+    };
     const blockRegex = /(\w+)\s*{([^}]+)}/g;
     let match;
     
@@ -415,6 +431,15 @@ export function deserializeMap(text) {
 
         data.extrusions.push(pathObj);
       }
+      else if (type === 'lemming') {
+        const lem = {
+          x: parseFloat(props.x), y: parseFloat(props.y),
+          a: parseFloat(props.a), s: parseFloat(props.s),
+          c: props.c.split(',').map(Number),
+          hasBuilt: props.hasBuilt === 'true'
+        };
+        data.lemmings.push(lem);
+      }
     }
 
     const gw = parseInt(data.map.width || 256);
@@ -439,6 +464,9 @@ export function deserializeMap(text) {
     extrusions.push(...data.extrusions);
     cubes.length = 0;
     cubes.push(...data.cubes);
+    if (data.lemmings) {
+        lemmings.push(...data.lemmings);
+    }
 
     if (data.camera.zoom) {
       camera.panX = camera.targetPanX = parseFloat(data.camera.panX);

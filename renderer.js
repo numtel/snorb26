@@ -744,9 +744,7 @@ export function draw(now) {
       gl.uniform1f(LU.rotation, camera.rotation);
       gl.uniform1f(LU.elevStep, ELEV_STEP * parallaxScalar); gl.uniform1i(LU.gridW, GRID_W); gl.uniform1i(LU.gridH, GRID_H);
 
-      gl.disable(gl.DEPTH_TEST);
       gl.drawArrays(gl.POINTS, 0, lemmings.length);
-      gl.enable(gl.DEPTH_TEST);
   }
 
   // Water Program
