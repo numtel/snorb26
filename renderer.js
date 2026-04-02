@@ -127,7 +127,7 @@
     SU = getUniforms(skyProgram, ["u_tilt", "u_rotation", "u_pan"]);
     EU = getUniforms(extrudeProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
     EDU = getUniforms(editorProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
-    LU = getUniforms(lemmingProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
+    LU = getUniforms(lemmingProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_time"]);
 
     setupGeometry();
     setupTextures();
@@ -206,8 +206,9 @@
     lemmingBuf = gl.createBuffer();
     gl.bindVertexArray(lemmingVao);
     gl.bindBuffer(gl.ARRAY_BUFFER, lemmingBuf);
-    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 20, 0); // Position
-    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 20, 8); // Color
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 24, 0);  // Position
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 24, 8);  // Angle
+    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 24, 12); // Color
   }
 
   function setupTextures() {
@@ -728,23 +729,26 @@ export function draw(now) {
 
   // DRAW LEMMINGS
   if (lemmings.length > 0) {
-      const arr = new Float32Array(lemmings.length * 5);
-      for (let i = 0; i < lemmings.length; i++) {
-          arr[i*5+0] = lemmings[i].x; arr[i*5+1] = lemmings[i].y;
-          arr[i*5+2] = lemmings[i].c[0]; arr[i*5+3] = lemmings[i].c[1]; arr[i*5+4] = lemmings[i].c[2];
-      }
-      gl.bindBuffer(gl.ARRAY_BUFFER, lemmingBuf);
-      gl.bufferData(gl.ARRAY_BUFFER, arr, gl.DYNAMIC_DRAW);
+    const arr = new Float32Array(lemmings.length * 6);
+    for (let i = 0; i < lemmings.length; i++) {
+        arr[i*6+0] = lemmings[i].x; arr[i*6+1] = lemmings[i].y;
+        arr[i*6+2] = lemmings[i].a;
+        arr[i*6+3] = lemmings[i].c[0]; arr[i*6+4] = lemmings[i].c[1]; arr[i*6+5] = lemmings[i].c[2];
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, lemmingBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, arr, gl.DYNAMIC_DRAW);
 
-      gl.useProgram(lemmingProgram);
-      gl.bindVertexArray(lemmingVao);
-      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, elevTex); gl.uniform1i(LU.elevTex, 0);
-      gl.uniform2f(LU.viewSize, canvas.width, canvas.height); gl.uniform2f(LU.pan, camera.panX, camera.panY);
-      gl.uniform1f(LU.zoom, camera.zoom); gl.uniform1f(LU.tileW, TILE_W); gl.uniform1f(LU.tileH, TILE_H * camera.tilt);
-      gl.uniform1f(LU.rotation, camera.rotation);
-      gl.uniform1f(LU.elevStep, ELEV_STEP * parallaxScalar); gl.uniform1i(LU.gridW, GRID_W); gl.uniform1i(LU.gridH, GRID_H);
+    gl.useProgram(lemmingProgram);
+    gl.bindVertexArray(lemmingVao);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, elevTex); gl.uniform1i(LU.elevTex, 0);
+    gl.uniform2f(LU.viewSize, canvas.width, canvas.height); gl.uniform2f(LU.pan, camera.panX, camera.panY);
+    gl.uniform1f(LU.zoom, camera.zoom); gl.uniform1f(LU.tileW, TILE_W); gl.uniform1f(LU.tileH, TILE_H * camera.tilt);
+    gl.uniform1f(LU.rotation, camera.rotation);
+    gl.uniform1f(LU.elevStep, ELEV_STEP * parallaxScalar); gl.uniform1i(LU.gridW, GRID_W); gl.uniform1i(LU.gridH, GRID_H);
 
-      gl.drawArrays(gl.POINTS, 0, lemmings.length);
+    gl.uniform1f(LU.time, (now || 0) * 0.001);
+
+    gl.drawArrays(gl.POINTS, 0, lemmings.length);
   }
 
   // Water Program

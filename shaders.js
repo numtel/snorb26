@@ -330,7 +330,8 @@ void main() {
 export const vsLemming = `#version 300 es
 precision highp float;
 layout(location=0) in vec2 a_pos;
-layout(location=1) in vec3 a_color;
+layout(location=1) in float a_angle;
+layout(location=2) in vec3 a_color;
 
 uniform vec2 u_viewSize; uniform vec2 u_pan; uniform float u_zoom;
 uniform float u_tileW; uniform float u_tileH; uniform float u_elevStep;
@@ -338,6 +339,7 @@ uniform int u_gridW; uniform int u_gridH; uniform float u_rotation;
 uniform highp usampler2D u_elevTex;
 
 out vec3 v_color;
+out float v_angle;
 
 float getInterpolatedHeight(vec2 pos) {
     vec2 p = clamp(pos, vec2(0.0), vec2(float(u_gridW - 1), float(u_gridH - 1)));
@@ -364,19 +366,72 @@ void main() {
     vec2 clip = (((world - u_pan) * u_zoom + (u_viewSize * 0.5)) / u_viewSize) * 2.0 - 1.0; clip.y *= -1.0;
     gl_Position = vec4(clip, depthZ, 1.0);
 
-    // Scale size with camera zoom, bob up and down over time
-    gl_PointSize = max(8.0, 24.0 * u_zoom);
+    // Make the point larger so we have enough canvas to draw a procedural person
+    gl_PointSize = max(16.0, 48.0 * u_zoom);
     v_color = a_color;
+
+    // Add camera rotation to the lemming's world angle so they flip directions relative to the screen
+    v_angle = a_angle + u_rotation;
 }`;
 
 export const fsLemming = `#version 300 es
 precision highp float;
 in vec3 v_color;
+in float v_angle;
+uniform float u_time;
 out vec4 fragColor;
+
+// Helper to draw lines for limbs
+float sdSegment(vec2 p, vec2 a, vec2 b) {
+    vec2 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return length(pa - ba * h);
+}
+
 void main() {
-    vec2 pc = gl_PointCoord - vec2(0.5);
-    if(length(pc) > 0.5) discard;
-    // Darker outline for the little dudes
-    vec3 col = length(pc) > 0.35 ? v_color * 0.5 : v_color;
-    fragColor = vec4(col, 1.0);
+    // Remap gl_PointCoord to [-1, 1], flip Y so positive is up
+    vec2 uv = gl_PointCoord * 2.0 - 1.0;
+    uv.y = -uv.y;
+
+    // Face left or right based on projected angle
+    float facing = sign(cos(v_angle));
+    if (facing == 0.0) facing = 1.0;
+    uv.x *= facing;
+
+    // Walk cycle animation (offset by angle so they don't all march perfectly in sync)
+    float walk = u_time * 15.0 + v_angle * 10.0;
+
+    // Bob the whole body up and down while walking
+    float bob = abs(sin(walk)) * 0.08;
+    uv.y -= bob;
+
+    float d = 1.0;
+    float r = 0.12; // Limb thickness
+
+    // 1. Head
+    d = min(d, length(uv - vec2(0.0, 0.5)) - 0.2);
+
+    // 2. Torso
+    d = min(d, sdSegment(uv, vec2(0.0, 0.3), vec2(0.0, -0.2)) - r);
+
+    // 3. Legs
+    vec2 leftFoot = vec2(sin(walk)*0.3, -0.6 + cos(walk)*0.1);
+    vec2 rightFoot = vec2(-sin(walk)*0.3, -0.6 - cos(walk)*0.1);
+    d = min(d, sdSegment(uv, vec2(0.0, -0.2), leftFoot) - r);
+    d = min(d, sdSegment(uv, vec2(0.0, -0.2), rightFoot) - r);
+
+    // 4. Arms
+    vec2 leftHand = vec2(-cos(walk)*0.3, 0.0 - sin(walk)*0.1);
+    vec2 rightHand = vec2(cos(walk)*0.3, 0.0 + sin(walk)*0.1);
+    d = min(d, sdSegment(uv, vec2(0.0, 0.2), leftHand) - 0.08);
+    d = min(d, sdSegment(uv, vec2(0.0, 0.2), rightHand) - 0.08);
+
+    // Smooth anti-aliasing
+    float alpha = smoothstep(0.05, 0.0, d);
+    if (alpha < 0.1) discard;
+
+    // Inner shadow/outline effect
+    vec3 col = mix(v_color * 0.4, v_color, smoothstep(-0.05, 0.0, d));
+
+    fragColor = vec4(col, alpha);
 }`;
