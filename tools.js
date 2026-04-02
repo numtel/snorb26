@@ -713,6 +713,22 @@ export function updateLemmings(dt) {
     let buildingsChanged = false;
     let terrainChanged = false;
 
+    // --- OPTIMIZATION 1: Cache Obstacle Data ---
+    // Precalculate trig and bounding boxes for cubes once per frame
+    // rather than calculating them inside the lemming loop.
+    const cubeCache = cubes.map(c => {
+        const cosR = Math.cos(c.r || 0);
+        const sinR = Math.sin(c.r || 0);
+        const hw = c.w / 2;
+        const hl = (c.l !== undefined ? c.l : c.w) / 2;
+        const radius = Math.hypot(hw, hl); // For quick circle intersection rejection
+        return { c, cosR, sinR, hw, hl, radius, lemmingsInside: 0 };
+    });
+
+    const extCache = extrusions.map(ext => {
+        return { ext, minSqDist: Math.pow(ext.width / 2 + 0.2, 2) };
+    });
+
     for (let lem of lemmings) {
         // --- DIGGER STATE LOGIC ---
         if (lem.isDigging) {
@@ -764,18 +780,29 @@ export function updateLemmings(dt) {
 
         let hitObstacle = false;
 
-        for (const ext of extrusions) {
+        // Optimized Path check
+        for (const cache of extCache) {
+            const ext = cache.ext;
             for (let i = 0; i < ext.points.length - 1; i++) {
-                if (distToSegmentSq({x: nx, y: ny}, ext.points[i], ext.points[i+1]) < Math.pow(ext.width / 2 + 0.2, 2)) {
+                if (distToSegmentSq({x: nx, y: ny}, ext.points[i], ext.points[i+1]) < cache.minSqDist) {
                     hitObstacle = true; break;
                 }
             }
             if (hitObstacle) break;
         }
 
+        // Optimized Cube check
         if (!hitObstacle) {
-            for (const c of cubes) {
-                if (isInsideCube(nx, ny, c)) {
+            for (const cache of cubeCache) {
+                // Quick bounding radius rejection
+                if (Math.abs(nx - cache.c.x) > cache.radius + 1 || Math.abs(ny - cache.c.y) > cache.radius + 1) continue;
+
+                // Detailed rotated check
+                const dx = nx - cache.c.x;
+                const dy = ny - cache.c.y;
+                const lx = dx * cache.cosR + dy * cache.sinR;
+                const ly = -dx * cache.sinR + dy * cache.cosR;
+                if (Math.abs(lx) <= cache.hw && Math.abs(ly) <= cache.hl) {
                     hitObstacle = true; break;
                 }
             }
@@ -800,49 +827,94 @@ export function updateLemmings(dt) {
     }
 
     let cubesAdded = false;
-    for (let i = 0; i < lemmings.length; i++) {
-        for (let j = i + 1; j < lemmings.length; j++) {
-            let l1 = lemmings[i], l2 = lemmings[j];
 
-            // Skip if either lemming has already built their one house, or lacks resources
-            if (l1.hasBuilt || l2.hasBuilt || !l1.hasResource || !l2.hasResource) continue;
+    // --- OPTIMIZATION 2: Spatial Partitioning for Builders ---
+    // Drastically reduces O(N^2) pairs check to O(N) by grouping lemmings into a 1x1 tile grid
+    const spatialGrid = new Map();
+    for (let lem of lemmings) {
+        if (lem.hasBuilt || !lem.hasResource) continue;
+        const key = Math.floor(lem.x) + ',' + Math.floor(lem.y);
+        let cell = spatialGrid.get(key);
+        if (!cell) { cell = []; spatialGrid.set(key, cell); }
+        cell.push(lem);
+    }
 
-            let dSq = (l1.x - l2.x)**2 + (l1.y - l2.y)**2;
-            if (dSq < 0.5) {
-                let mx = (l1.x + l2.x) / 2;
-                let my = (l1.y + l2.y) / 2;
-                let size = 1 + Math.random() * 2.5;
+    for (const [key, cellLemmings] of spatialGrid.entries()) {
+        const [cx, cy] = key.split(',').map(Number);
 
-                cubes.push({
-                    x: mx, y: my,
-                    w: size, l: size,
-                    h: 2 + Math.random() * 6,
-                    r: Math.random() * Math.PI,
-                    c: [ (l1.c[0] + l2.c[0]) / 2, (l1.c[1] + l2.c[1]) / 2, (l1.c[2] + l2.c[2]) / 2 ]
-                });
-                cubesAdded = true;
+        // Only check the current cell and right/bottom neighbors to avoid double-checking
+        const neighborKeys = [
+            key,
+            (cx + 1) + ',' + cy,
+            cx + ',' + (cy + 1),
+            (cx + 1) + ',' + (cy + 1),
+            (cx - 1) + ',' + (cy + 1)
+        ];
 
-                l1.a += Math.PI; l2.a += Math.PI;
+        for (let i = 0; i < cellLemmings.length; i++) {
+            let l1 = cellLemmings[i];
+            if (l1.hasBuilt) continue;
 
-                // Flag them so they never build again
-                l1.hasBuilt = true; l2.hasBuilt = true;
+            for (const nKey of neighborKeys) {
+                const neighborLemmings = spatialGrid.get(nKey);
+                if (!neighborLemmings) continue;
+
+                for (let j = 0; j < neighborLemmings.length; j++) {
+                    let l2 = neighborLemmings[j];
+
+                    // If scanning the identical cell, prevent duplicate pair checking
+                    if (key === nKey && j <= i) continue;
+                    if (l2.hasBuilt) continue;
+
+                    let dSq = (l1.x - l2.x)**2 + (l1.y - l2.y)**2;
+                    if (dSq < 0.5) {
+                        let mx = (l1.x + l2.x) / 2;
+                        let my = (l1.y + l2.y) / 2;
+                        let size = 1 + Math.random() * 2.5;
+
+                        cubes.push({
+                            x: mx, y: my,
+                            w: size, l: size,
+                            h: 2 + Math.random() * 6,
+                            r: Math.random() * Math.PI,
+                            c: [ (l1.c[0] + l2.c[0]) / 2, (l1.c[1] + l2.c[1]) / 2, (l1.c[2] + l2.c[2]) / 2 ]
+                        });
+                        cubesAdded = true;
+
+                        l1.a += Math.PI; l2.a += Math.PI;
+                        l1.hasBuilt = true; l2.hasBuilt = true;
+                        break; // Stop looking for a partner for l1
+                    }
+                }
+                if (l1.hasBuilt) break; // Break out of neighbor loop if they found a partner
+            }
+        }
+    }
+
+    // Check for lemmings reproducing inside cubes
+    // --- OPTIMIZATION 3: Single-Pass Reproduction Bounds Checking ---
+    // Collect reproduction data in one pass over the lemmings using the cached collision data
+    for (let lem of lemmings) {
+        for (const cache of cubeCache) {
+            // Broad-phase circle reject
+            if (Math.abs(lem.x - cache.c.x) > cache.radius || Math.abs(lem.y - cache.c.y) > cache.radius) continue;
+
+            const dx = lem.x - cache.c.x;
+            const dy = lem.y - cache.c.y;
+            const lx = dx * cache.cosR + dy * cache.sinR;
+            const ly = -dx * cache.sinR + dy * cache.cosR;
+
+            if (Math.abs(lx) <= cache.hw && Math.abs(ly) <= cache.hl) {
+                cache.lemmingsInside++;
             }
         }
     }
 
     let needsBufferRebuild = cubesAdded;
 
-    // Check for lemmings reproducing inside cubes
-    for (let c of cubes) {
-        let lemmingsInside = 0;
-        for (let lem of lemmings) {
-            if (isInsideCube(lem.x, lem.y, c)) {
-                lemmingsInside++;
-            }
-        }
-
-        // If 2 or more lemmings are inside, progress the reproduction timer
-        if (lemmingsInside >= 2) {
+    for (let cache of cubeCache) {
+        let c = cache.c;
+        if (cache.lemmingsInside >= 2) {
             c.reproduceTimer = (c.reproduceTimer || 0) + dt;
             if (c.reproduceTimer >= 30.0) { // Produces a new lemming every 30 seconds
                 c.reproduceTimer = 0;
@@ -875,9 +947,7 @@ export function updateLemmings(dt) {
         }
     }
 
-    if (terrainChanged) {
-        uploadElevations();
-    }
+    if (terrainChanged) uploadElevations();
 
     if (needsBufferRebuild || buildingsChanged || terrainChanged) {
         if (needsBufferRebuild) rebuildCubeBuffers();
