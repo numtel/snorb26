@@ -162,7 +162,7 @@ p { margin-bottom:15px; }
 }
 
 @media (max-width:480px) {
-  .menubar .menu-container:nth-last-child(-n + 2) .menu {
+  .menubar .menu-container:nth-last-child(-n + 3) .menu {
     left: auto;
     right: 0;
   }
