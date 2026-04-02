@@ -187,7 +187,9 @@ export function serializeMap() {
     ['height', GRID_H],
     ['waterLevel', mapSettings.waterLevel],
     ['showGrid', appState.showGrid],
-    ['showUnderground', appState.showUnderground]
+    ['showUnderground', appState.showUnderground],
+    ['isPlaying', appState.isPlaying],
+    ['gameSpeed', appState.gameSpeed],
   ]);
 
   out += formatBlock('camera', camera, [
@@ -497,6 +499,9 @@ export function deserializeMap(text) {
     appState.showGrid = data.map.showGrid !== 'false';
     appState.showUnderground = data.map.showUnderground === 'true';
 
+    if (data.map.isPlaying !== undefined) appState.isPlaying = data.map.isPlaying !== 'false';
+    if (data.map.gameSpeed !== undefined) appState.gameSpeed = parseFloat(data.map.gameSpeed) || 1.0;
+
     if (data.brush.radius) {
       brush.radius = parseInt(data.brush.radius);
       brush.smooth = parseFloat(data.brush.smooth);
@@ -544,6 +549,9 @@ function deserializeMapJSON(data) {
 
     if (data.showGrid !== undefined) appState.showGrid = data.showGrid;
     if (data.showUnderground !== undefined) appState.showUnderground = data.showUnderground;
+
+    if (data.isPlaying !== undefined) appState.isPlaying = data.isPlaying;
+    if (data.gameSpeed !== undefined) appState.gameSpeed = data.gameSpeed;
 
     if (data.brush) {
       brush.radius = data.brush.radius;
