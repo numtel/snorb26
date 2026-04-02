@@ -383,6 +383,7 @@ function menuClicks(command, tool) {
       break;
     case 'show-help': document.getElementById('helpDialog').showModal(); break;
     case 'show-about': document.getElementById('aboutDialog').showModal(); break;
+    case 'open-reddit': window.open('https://reddit.com/r/snorb'); break;
     case 'pan-up': camera.targetPanY -= moveSpeed * 0.5; break;
     case 'pan-down': camera.targetPanY += moveSpeed * 0.5; break;
     case 'pan-left': camera.targetPanX -= moveSpeed; break;
