@@ -17,6 +17,7 @@ import {
   resizeMapState,
   cubes,
   cubeSettings,
+  lemmings,
   customBuildingRegistry,
   deserializeMap,
   serializeMap,
@@ -857,7 +858,7 @@ function tick(now) {
   };
 
   draw(appState.gameTime);
-  hud.textContent = `${appState.toolMode}\nzoom: ${Math.round(camera.zoom * 100)}%, tilt: ${Math.round(camera.tilt * 100)}%, rot: ${Math.round((camera.rotation * 180 / Math.PI) % 360)}°\ntile: (${selected.x}, ${selected.y})`;
+  hud.textContent = `${appState.toolMode}\nzoom: ${Math.round(camera.zoom * 100)}%, tilt: ${Math.round(camera.tilt * 100)}%, rot: ${Math.round((camera.rotation * 180 / Math.PI) % 360)}°\ntile: (${selected.x}, ${selected.y}), lemmings: ${lemmings.length}`;
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
