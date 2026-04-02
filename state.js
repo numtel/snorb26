@@ -72,6 +72,9 @@ export const appState = {
   editPathNodeIndex: -1,
   activeCubeIndex: -1,
   activeCubeHandle: -1,
+  isPlaying: true,
+  gameSpeed: 1.0,
+  gameTime: 0,
 };
 
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));

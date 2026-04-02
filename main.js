@@ -339,6 +339,11 @@ function menuClicks(command, tool) {
   }
 
   switch(command) {
+    case 'toggle-play':
+      appState.isPlaying = !appState.isPlaying;
+      const playBtn = document.querySelector('button[data-command="toggle-play"]');
+      if (playBtn) playBtn.textContent = appState.isPlaying ? 'Pause' : 'Play';
+      break;
     case 'reset':
       if (confirm("Are you sure you want to clear the map?")) {
         const nextW = parseInt(document.getElementById('newWidth').value, 10) || 256;
@@ -462,6 +467,7 @@ Object.entries({
     const hex = e.target.value;
     cubeSettings.color = [ parseInt(hex.substr(1,2), 16)/255, parseInt(hex.substr(3,2), 16)/255, parseInt(hex.substr(5,2), 16)/255 ];
   },
+  gameSpeed: e => appState.gameSpeed = parseFloat(e.target.value),
 }).forEach((entry) => {
   const el = document.getElementById(entry[0])
   entry[1]({ target: el });
@@ -772,12 +778,17 @@ canvas.addEventListener("wheel", (e) => {
 
 requestPick(canvas.width * 0.5, canvas.height * 0.5); // Initial Selection
 
-let lastLemmingTime = 0;
+let lastTime = 0;
 
 function tick(now) {
-  const dtLemming = lastLemmingTime ? (now - lastLemmingTime) / 1000 : 0;
-  lastLemmingTime = now;
-  if (dtLemming > 0) updateLemmings(dtLemming);
+  const dtReal = lastTime ? (now - lastTime) : 0;
+  lastTime = now;
+
+  if (appState.isPlaying) {
+    appState.gameTime += dtReal * appState.gameSpeed;
+    const dtLemming = (dtReal / 1000) * appState.gameSpeed;
+    if (dtLemming > 0) updateLemmings(dtLemming);
+  }
 
   const l = camera.lerpFactor;
 
@@ -845,7 +856,7 @@ function tick(now) {
     orbitPivot = null;
   };
 
-  draw(now);
+  draw(appState.gameTime);
   hud.textContent = `${appState.toolMode}\nzoom: ${Math.round(camera.zoom * 100)}%, tilt: ${Math.round(camera.tilt * 100)}%, rot: ${Math.round((camera.rotation * 180 / Math.PI) % 360)}°\ntile: (${selected.x}, ${selected.y})`;
   requestAnimationFrame(tick);
 }
