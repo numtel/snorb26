@@ -66,7 +66,7 @@ export const paintStroke = {
 export const brush = { radius: 2, smooth: 0.25 };
 export const appState = {
   toolMode: 'pan',
-  showGrid: true,
+  showGrid: false,
   showUnderground: false,
   activeExtrusion: null,
   editPathNodeIndex: -1,
