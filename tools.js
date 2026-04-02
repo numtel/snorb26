@@ -703,13 +703,44 @@ export function placeLemmingAt(x, y) {
         c: [Math.random(), Math.random(), Math.random()], // Color
         hasBuilt: false,
         hasResource: false,
+        isDigging: false,
+        digTimer: 0,
+        digAccumulator: 0,
     });
 }
 
 export function updateLemmings(dt) {
     let buildingsChanged = false;
+    let terrainChanged = false;
 
     for (let lem of lemmings) {
+        // --- DIGGER STATE LOGIC ---
+        if (lem.isDigging) {
+            lem.digTimer -= dt;
+            lem.digAccumulator = (lem.digAccumulator || 0) + dt;
+
+            // Lower the terrain every 0.5 seconds
+            if (lem.digAccumulator >= 0.5) {
+                lem.digAccumulator = 0;
+                const cX = Math.floor(lem.x), cY = Math.floor(lem.y);
+                const idx = cY * GRID_W + cX;
+
+                // Dig down until they hit water
+                if (elevations[idx] > mapSettings.waterLevel) {
+                    elevations[idx] = Math.max(0, elevations[idx] - 1);
+                    terrainChanged = true;
+                } else {
+                    lem.digTimer = 0; // Stop digging if they hit the water table
+                }
+            }
+
+            if (lem.digTimer <= 0) {
+                lem.isDigging = false;
+            }
+            continue; // Skip movement while digging
+        }
+
+        // --- NORMAL WANDERING LOGIC ---
         let nx = lem.x + Math.cos(lem.a) * lem.s * dt;
         let ny = lem.y + Math.sin(lem.a) * lem.s * dt;
 
@@ -720,12 +751,14 @@ export function updateLemmings(dt) {
 
         const cX = Math.floor(lem.x), cY = Math.floor(lem.y);
         const nX = Math.floor(nx), nY = Math.floor(ny);
+
         // Demolish logic
         if (!lem.hasBuilt && !lem.hasResource && buildingAt[cY * GRID_W + cX] > 0) {
             buildingAt[cY * GRID_W + cX] = 0;
             lem.hasResource = true;
             buildingsChanged = true;
         }
+
         const currentH = elevations[cY * GRID_W + cX];
         const nextH = elevations[nY * GRID_W + nX];
 
@@ -756,6 +789,14 @@ export function updateLemmings(dt) {
         }
 
         if (Math.random() < 0.05) lem.a += (Math.random() - 0.5);
+
+        // --- CHANCE TO BECOME A DIGGER ---
+        // Roughly 2% chance per second to start digging
+        if (Math.random() < 0.02 * dt) {
+            lem.isDigging = true;
+            lem.digTimer = 4.0 + Math.random() * 4.0; // Dig for 4 to 8 seconds
+            lem.digAccumulator = 0;
+        }
     }
 
     let cubesAdded = false;
@@ -816,23 +857,29 @@ export function updateLemmings(dt) {
                 const spawnX = clamp(c.x + Math.cos(angle) * spawnRadius, 1, GRID_W - 2);
                 const spawnY = clamp(c.y + Math.sin(angle) * spawnRadius, 1, GRID_H - 2);
 
-                // Plop the new lemming
                 lemmings.push({
                     x: spawnX,
                     y: spawnY,
-                    a: angle, // Head outward from the cube
+                    a: angle,
                     s: 1.5 + Math.random() * 2.5,
                     c: [Math.random(), Math.random(), Math.random()],
                     hasBuilt: false,
                     hasResource: false,
+                    isDigging: false,
+                    digTimer: 0,
+                    digAccumulator: 0,
                 });
             }
         } else {
-            c.reproduceTimer = 0; // Reset timer if lemmings leave
+            c.reproduceTimer = 0;
         }
     }
 
-    if (needsBufferRebuild || buildingsChanged) {
+    if (terrainChanged) {
+        uploadElevations();
+    }
+
+    if (needsBufferRebuild || buildingsChanged || terrainChanged) {
         if (needsBufferRebuild) rebuildCubeBuffers();
         if (buildingsChanged) rebuildBuildingInstances();
         saveMapToLocal();

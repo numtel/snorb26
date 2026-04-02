@@ -246,6 +246,10 @@ export function serializeMap() {
       ['c', l.c.join(', ')], ['hasBuilt', l.hasBuilt || false],
       ['hasResource', l.hasResource || false],
     ];
+    if (l.isDigging) {
+      props.push(['isDigging', l.isDigging]);
+      props.push(['digTimer', (l.digTimer || 0).toFixed(2)]);
+    }
     out += formatBlock('lemming', l, props);
   });
 
@@ -439,6 +443,9 @@ export function deserializeMap(text) {
           c: props.c.split(',').map(Number),
           hasBuilt: props.hasBuilt === 'true',
           hasResource: props.hasResource === 'true',
+          isDigging: props.isDigging === 'true',
+          digTimer: parseFloat(props.digTimer) || 0,
+          digAccumulator: 0,
         };
         data.lemmings.push(lem);
       }

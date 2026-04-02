@@ -72,6 +72,8 @@ Defines a lemming.
 * **c**: Color as three comma-separated floats (`R, G, B`) from 0.0 to 1.0.
 * **hasBuilt**: Boolean, can only build one cube
 * **hasResource**: Boolean, whether it has demolished a sprite and is ready to build
+* **isDigging**: (Optional) Boolean, whether the lemming is currently digging.
+* **digTimer**: (Optional) Float, remaining time in seconds the lemming will dig.
 
 ---
 
