@@ -780,7 +780,49 @@ export function updateLemmings(dt) {
         }
     }
 
-    if (cubesAdded) {
+    let needsBufferRebuild = cubesAdded;
+
+    // Check for lemmings reproducing inside cubes
+    for (let c of cubes) {
+        let lemmingsInside = 0;
+        for (let lem of lemmings) {
+            if (isInsideCube(lem.x, lem.y, c)) {
+                lemmingsInside++;
+            }
+        }
+
+        // If 2 or more lemmings are inside, progress the reproduction timer
+        if (lemmingsInside >= 2) {
+            c.reproduceTimer = (c.reproduceTimer || 0) + dt;
+            if (c.reproduceTimer >= 30.0) { // Produces a new lemming every 30 seconds
+                c.reproduceTimer = 0;
+                c.h += 1.5; // Increase the cube's height
+                needsBufferRebuild = true;
+
+                // Calculate a position just outside the cube's bounds
+                const maxDim = Math.max(c.w, c.l !== undefined ? c.l : c.w);
+                const spawnRadius = (maxDim / 2) + 0.5;
+                const angle = Math.random() * Math.PI * 2;
+
+                const spawnX = clamp(c.x + Math.cos(angle) * spawnRadius, 1, GRID_W - 2);
+                const spawnY = clamp(c.y + Math.sin(angle) * spawnRadius, 1, GRID_H - 2);
+
+                // Plop the new lemming
+                lemmings.push({
+                    x: spawnX,
+                    y: spawnY,
+                    a: angle, // Head outward from the cube
+                    s: 1.5 + Math.random() * 2.5,
+                    c: [Math.random(), Math.random(), Math.random()],
+                    hasBuilt: false
+                });
+            }
+        } else {
+            c.reproduceTimer = 0; // Reset timer if lemmings leave
+        }
+    }
+
+    if (needsBufferRebuild) {
         rebuildCubeBuffers();
         saveMapToLocal();
     }
