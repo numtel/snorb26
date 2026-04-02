@@ -243,7 +243,8 @@ export function serializeMap() {
   lemmings.forEach(l => {
     const props = [
       ['x', l.x], ['y', l.y], ['a', l.a], ['s', l.s],
-      ['c', l.c.join(', ')], ['hasBuilt', l.hasBuilt || false]
+      ['c', l.c.join(', ')], ['hasBuilt', l.hasBuilt || false],
+      ['hasResource', l.hasResource || false],
     ];
     out += formatBlock('lemming', l, props);
   });
@@ -436,7 +437,8 @@ export function deserializeMap(text) {
           x: parseFloat(props.x), y: parseFloat(props.y),
           a: parseFloat(props.a), s: parseFloat(props.s),
           c: props.c.split(',').map(Number),
-          hasBuilt: props.hasBuilt === 'true'
+          hasBuilt: props.hasBuilt === 'true',
+          hasResource: props.hasResource === 'true',
         };
         data.lemmings.push(lem);
       }

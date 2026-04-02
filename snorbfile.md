@@ -71,6 +71,7 @@ Defines a lemming.
 * **x / y / a / s**: Position, angle, speed
 * **c**: Color as three comma-separated floats (`R, G, B`) from 0.0 to 1.0.
 * **hasBuilt**: Boolean, can only build one cube
+* **hasResource**: Boolean, whether it has demolished a sprite and is ready to build
 
 ---
 

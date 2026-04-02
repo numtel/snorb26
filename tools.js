@@ -702,10 +702,13 @@ export function placeLemmingAt(x, y) {
         s: 1.5 + Math.random() * 2.5,             // Speed
         c: [Math.random(), Math.random(), Math.random()], // Color
         hasBuilt: false,
+        hasResource: false,
     });
 }
 
 export function updateLemmings(dt) {
+    let buildingsChanged = false;
+
     for (let lem of lemmings) {
         let nx = lem.x + Math.cos(lem.a) * lem.s * dt;
         let ny = lem.y + Math.sin(lem.a) * lem.s * dt;
@@ -717,6 +720,12 @@ export function updateLemmings(dt) {
 
         const cX = Math.floor(lem.x), cY = Math.floor(lem.y);
         const nX = Math.floor(nx), nY = Math.floor(ny);
+        // Demolish logic
+        if (!lem.hasBuilt && !lem.hasResource && buildingAt[cY * GRID_W + cX] > 0) {
+            buildingAt[cY * GRID_W + cX] = 0;
+            lem.hasResource = true;
+            buildingsChanged = true;
+        }
         const currentH = elevations[cY * GRID_W + cX];
         const nextH = elevations[nY * GRID_W + nX];
 
@@ -754,8 +763,8 @@ export function updateLemmings(dt) {
         for (let j = i + 1; j < lemmings.length; j++) {
             let l1 = lemmings[i], l2 = lemmings[j];
 
-            // Skip if either lemming has already built their one house
-            if (l1.hasBuilt || l2.hasBuilt) continue;
+            // Skip if either lemming has already built their one house, or lacks resources
+            if (l1.hasBuilt || l2.hasBuilt || !l1.hasResource || !l2.hasResource) continue;
 
             let dSq = (l1.x - l2.x)**2 + (l1.y - l2.y)**2;
             if (dSq < 0.5) {
@@ -814,7 +823,8 @@ export function updateLemmings(dt) {
                     a: angle, // Head outward from the cube
                     s: 1.5 + Math.random() * 2.5,
                     c: [Math.random(), Math.random(), Math.random()],
-                    hasBuilt: false
+                    hasBuilt: false,
+                    hasResource: false,
                 });
             }
         } else {
@@ -822,8 +832,9 @@ export function updateLemmings(dt) {
         }
     }
 
-    if (needsBufferRebuild) {
-        rebuildCubeBuffers();
+    if (needsBufferRebuild || buildingsChanged) {
+        if (needsBufferRebuild) rebuildCubeBuffers();
+        if (buildingsChanged) rebuildBuildingInstances();
         saveMapToLocal();
     }
 }
