@@ -255,6 +255,10 @@ export function serializeMap() {
       props.push(['isDigging', l.isDigging]);
       props.push(['digTimer', (l.digTimer || 0).toFixed(2)]);
     }
+    if (l.isRaising) {
+      props.push(['isRaising', l.isRaising]);
+      props.push(['raiseTimer', (l.raiseTimer || 0).toFixed(2)]);
+    }
     out += formatBlock('lemming', l, props);
   });
 
@@ -451,6 +455,9 @@ export function deserializeMap(text) {
           isDigging: props.isDigging === 'true',
           digTimer: parseFloat(props.digTimer) || 0,
           digAccumulator: 0,
+          isRaising: props.isRaising === 'true',
+          raiseTimer: parseFloat(props.raiseTimer) || 0,
+          raiseAccumulator: 0,
         };
         data.lemmings.push(lem);
       }

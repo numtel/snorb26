@@ -760,6 +760,9 @@ export function placeLemmingAt(x, y) {
         isDigging: false,
         digTimer: 0,
         digAccumulator: 0,
+        isRaising: false,
+        raiseTimer: 0,
+        raiseAccumulator: 0,
     });
 }
 
@@ -808,6 +811,50 @@ export function updateLemmings(dt) {
                 lem.isDigging = false;
             }
             continue; // Skip movement while digging
+        }
+        // --- PATH MAKER / RAISER STATE LOGIC ---
+        if (lem.isRaising) {
+            lem.raiseTimer -= dt;
+            lem.raiseAccumulator = (lem.raiseAccumulator || 0) + dt;
+
+            if (lem.raiseAccumulator >= 0.5) {
+                lem.raiseAccumulator = 0;
+
+                // Calculate the tile 1 unit forward
+                let nx = lem.x + Math.cos(lem.a);
+                let ny = lem.y + Math.sin(lem.a);
+
+                if (nx >= 0 && nx < GRID_W - 1 && ny >= 0 && ny < GRID_H - 1) {
+                    const cX = Math.floor(lem.x), cY = Math.floor(lem.y);
+                    const nX = Math.floor(nx), nY = Math.floor(ny);
+                    const currentIdx = cY * GRID_W + cX;
+                    const nextIdx = nY * GRID_W + nX;
+
+                    // Target height is either current height or just above water, whichever is higher
+                    const targetH = Math.max(elevations[currentIdx], mapSettings.waterLevel + 1);
+
+                    if (elevations[nextIdx] < targetH) {
+                        elevations[nextIdx] = targetH;
+                        terrainChanged = true;
+                    } else if (elevations[nextIdx] - elevations[currentIdx] > 5) {
+                        // Stop building and turn around if they hit a massive cliff
+                        lem.isRaising = false;
+                        lem.a += Math.PI;
+                        continue;
+                    }
+
+                    // Step forward onto the newly created path
+                    lem.x = nx;
+                    lem.y = ny;
+                } else {
+                    lem.a += Math.PI; // Turn around if hitting the world edge
+                }
+            }
+
+            if (lem.raiseTimer <= 0) {
+                lem.isRaising = false;
+            }
+            continue; // Skip normal movement
         }
 
         // --- NORMAL WANDERING LOGIC ---
@@ -871,12 +918,17 @@ export function updateLemmings(dt) {
 
         if (Math.random() < 0.05) lem.a += (Math.random() - 0.5);
 
-        // --- CHANCE TO BECOME A DIGGER ---
-        // Roughly 2% chance per second to start digging
-        if (Math.random() < 0.02 * dt) {
-            lem.isDigging = true;
-            lem.digTimer = 4.0 + Math.random() * 4.0; // Dig for 4 to 8 seconds
-            lem.digAccumulator = 0;
+        // --- CHANCE TO BECOME A DIGGER OR RAISER ---
+        if (!lem.isDigging && !lem.isRaising) {
+            if (Math.random() < 0.02 * dt) {
+                lem.isDigging = true;
+                lem.digTimer = 4.0 + Math.random() * 4.0; // Dig for 4 to 8 seconds
+                lem.digAccumulator = 0;
+            } else if (Math.random() < 0.02 * dt) {
+                lem.isRaising = true;
+                lem.raiseTimer = 4.0 + Math.random() * 4.0; // Raise path for 4 to 8 seconds
+                lem.raiseAccumulator = 0;
+            }
         }
     }
 
@@ -994,6 +1046,9 @@ export function updateLemmings(dt) {
                     isDigging: false,
                     digTimer: 0,
                     digAccumulator: 0,
+                    isRaising: false,
+                    raiseTimer: 0,
+                    raiseAccumulator: 0,
                 });
             }
         } else {
