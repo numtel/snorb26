@@ -977,13 +977,22 @@ export function updateLemmings(dt) {
                         let mx = (l1.x + l2.x) / 2;
                         let my = (l1.y + l2.y) / 2;
                         let size = 1 + Math.random() * 2.5;
+                        let hw = size / 2, hl = size / 2;
+                        let a1 = l1.a, a2 = l2.a;
 
                         cubes.push({
                             x: mx, y: my,
                             w: size, l: size,
                             h: 2 + Math.random() * 6,
                             r: Math.random() * Math.PI,
-                            c: [ (l1.c[0] + l2.c[0]) / 2, (l1.c[1] + l2.c[1]) / 2, (l1.c[2] + l2.c[2]) / 2 ]
+                            c: [ (l1.c[0] + l2.c[0]) / 2, (l1.c[1] + l2.c[1]) / 2, (l1.c[2] + l2.c[2]) / 2 ],
+                            // Store uniquely generated corners based on their collision angles
+                            customPts: [
+                                -hw + Math.cos(a1) * Math.random(), -hl + Math.sin(a1) * Math.random(),
+                                 hw + Math.cos(a2) * Math.random(), -hl + Math.sin(a2) * Math.random(),
+                                -hw + Math.cos(a2) * Math.random(),  hl + Math.sin(a1) * Math.random(),
+                                 hw + Math.cos(a1) * Math.random(),  hl + Math.sin(a2) * Math.random()
+                            ],
                         });
                         cubesAdded = true;
 

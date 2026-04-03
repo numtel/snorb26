@@ -217,6 +217,7 @@ export function serializeMap() {
       ['l', c.l !== undefined ? c.l : c.w],
       ['h', c.h], ['r', c.r || 0], ['c', c.c.join(', ')]
     ];
+    if (c.customPts) props.push(['customPts', c.customPts.map(n => n.toFixed(3)).join(', ')]);
     if (c.rawDeltas) {
       if (c.rawDeltas.x) props.push(['dx', c.rawDeltas.x]);
       if (c.rawDeltas.y) props.push(['dy', c.rawDeltas.y]);
@@ -385,6 +386,7 @@ export function deserializeMap(text) {
           w: parseFloat(props.w), l: parseFloat(props.l), h: parseFloat(props.h),
           r: parseFloat(props.r), c: props.c.split(',').map(Number)
         };
+        if (props.customPts) cube.customPts = props.customPts.split(',').map(Number);
         const rawDeltas = {};
         const fns = {};
         let hasAnim = false;

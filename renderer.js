@@ -808,17 +808,30 @@ export function rebuildCubeBuffers(now = 0) {
             y: cy + lx * s_rot + ly * c_rot
         });
 
-        // Helper to rotate normals
-        const rotN = (nx, ny) => ({
-            x: nx * c_rot - ny * s_rot,
-            y: nx * s_rot + ny * c_rot
-        });
+        // Allow unique geometric deformations if they exist
+        let lp00 = { x: -hw, y: -hl }, lp10 = { x: hw, y: -hl };
+        let lp01 = { x: -hw, y: hl },  lp11 = { x: hw, y: hl };
+
+        if (cube.customPts) {
+            lp00 = { x: cube.customPts[0], y: cube.customPts[1] };
+            lp10 = { x: cube.customPts[2], y: cube.customPts[3] };
+            lp01 = { x: cube.customPts[4], y: cube.customPts[5] };
+            lp11 = { x: cube.customPts[6], y: cube.customPts[7] };
+        }
 
         // 4 Corners in world space
-        const p00 = rot(-hw, -hl); // Top Left
-        const p10 = rot(hw, -hl);  // Top Right
-        const p01 = rot(-hw, hl);  // Bottom Left
-        const p11 = rot(hw, hl);   // Bottom Right
+        const p00 = rot(lp00.x, lp00.y); // Top Left
+        const p10 = rot(lp10.x, lp10.y); // Top Right
+        const p01 = rot(lp01.x, lp01.y); // Bottom Left
+        const p11 = rot(lp11.x, lp11.y); // Bottom Right
+
+        // Helper to calculate face normals accurately for distorted shapes
+        const calcNormal = (pA, pB) => {
+            const dx = pB.x - pA.x;
+            const dy = pB.y - pA.y;
+            const len = Math.hypot(dx, dy) || 1;
+            return { x: -dy / len, y: dx / len };
+        };
 
         // Top Face
         pushVert(p00.x, p00.y, h,  0,0,1,  c[0], c[1], c[2]);
@@ -829,7 +842,7 @@ export function rebuildCubeBuffers(now = 0) {
         pushVert(p01.x, p01.y, h,  0,0,1,  c[0], c[1], c[2]);
 
         // Left Face (Normal: -1, 0)
-        const nl = rotN(-1, 0);
+        const nl = calcNormal(p00, p01);
         const lc = [c[0]*0.8, c[1]*0.8, c[2]*0.8];
         pushVert(p00.x, p00.y, 0, nl.x, nl.y, 0, lc[0], lc[1], lc[2]);
         pushVert(p01.x, p01.y, 0, nl.x, nl.y, 0, lc[0], lc[1], lc[2]);
@@ -839,7 +852,7 @@ export function rebuildCubeBuffers(now = 0) {
         pushVert(p00.x, p00.y, h, nl.x, nl.y, 0, lc[0], lc[1], lc[2]);
 
         // Right Face (Normal: 1, 0)
-        const nr = rotN(1, 0);
+        const nr = calcNormal(p11, p10);
         const rc = [c[0]*0.6, c[1]*0.6, c[2]*0.6];
         pushVert(p11.x, p11.y, 0, nr.x, nr.y, 0, rc[0], rc[1], rc[2]);
         pushVert(p10.x, p10.y, 0, nr.x, nr.y, 0, rc[0], rc[1], rc[2]);
@@ -849,7 +862,7 @@ export function rebuildCubeBuffers(now = 0) {
         pushVert(p11.x, p11.y, h, nr.x, nr.y, 0, rc[0], rc[1], rc[2]);
 
         // Front Face (Normal: 0, 1)
-        const nf = rotN(0, 1);
+        const nf = calcNormal(p01, p11);
         const fc = [c[0]*0.7, c[1]*0.7, c[2]*0.7];
         pushVert(p01.x, p01.y, 0, nf.x, nf.y, 0, fc[0], fc[1], fc[2]);
         pushVert(p11.x, p11.y, 0, nf.x, nf.y, 0, fc[0], fc[1], fc[2]);
@@ -859,7 +872,7 @@ export function rebuildCubeBuffers(now = 0) {
         pushVert(p01.x, p01.y, h, nf.x, nf.y, 0, fc[0], fc[1], fc[2]);
 
         // Back Face (Normal: 0, -1)
-        const nb = rotN(0, -1);
+        const nb = calcNormal(p10, p00);
         const bc = [c[0]*0.9, c[1]*0.9, c[2]*0.9];
         pushVert(p10.x, p10.y, 0, nb.x, nb.y, 0, bc[0], bc[1], bc[2]);
         pushVert(p00.x, p00.y, 0, nb.x, nb.y, 0, bc[0], bc[1], bc[2]);
