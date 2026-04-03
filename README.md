@@ -1,5 +1,10 @@
 # snorb26
 
+If the singularity is here, and I've seen it with my ooty-batooty mind's eye, and we're living in a simulation, then God-willing, we've got to do the same and build our own simulation. So play with worlds, plop lemmings, and dream up new things that they could be doing and implement it. Get it done! Send me a PR, or fork into your own path. It's all good. Let's simulate and observe what we come up with!
+
+Much Love,
+Sen
+
 * Discussion forum on [reddit/r/snorb](https://www.reddit.com/r/snorb/)
 * Map state is persisted in local storage in the browser between page refreshes and maps can be saved and loaded to external files in the [snorbfile format](snorbfile.md).
 
