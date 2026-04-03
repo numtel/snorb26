@@ -38,7 +38,7 @@ export function seedDemo(config = null) {
   const cx = Math.floor(GRID_W * 0.5), cy = Math.floor(GRID_H * 0.5);
 
   // Default to the original island look if no config is provided
-  const cfg = config || { canyons: 0, islands: 80, valleys: 0, beaches: 0, deserts: 0, mountains: 0 };
+  const cfg = config || { canyons: 0, islands: 80, valleys: 0, beaches: 0, deserts: 0, mountains: 0, erosion: 0 };
 
   const c_canyon = cfg.canyons / 100;
   const c_island = cfg.islands / 100;
@@ -46,6 +46,7 @@ export function seedDemo(config = null) {
   const c_beach = cfg.beaches / 100;
   const c_desert = cfg.deserts / 100;
   const c_mountain = cfg.mountains / 100;
+  const c_erosion = cfg.erosion / 100;
 
   // Random offsets ensure a unique map every time
   const ox = Math.random() * 10000;
@@ -90,6 +91,24 @@ export function seedDemo(config = null) {
          if (distToWater < 30 * c_beach) {
              h = 86 + (Math.sign(h - 86) * distToWater * (1.0 - c_beach));
          }
+      }
+
+      // Erosion (Finer detail, following contours via domain warping)
+      if (c_erosion > 0 && h > 86) {
+         const altitudeFactor = (h - 86) / 100;
+
+         // Warp the coordinates using the underlying mountain noise to make gullies curve with the terrain
+         const wx = nx + (nMid * 25);
+         const wy = ny + (nLow * 25);
+
+         // Sample a higher frequency noise for finer grained detail
+         const nFine = Math.sin(wx * 0.55) * Math.cos(wy * 0.55);
+
+         // Create sharp, narrow crevices by squaring the inverted absolute noise
+         const gully = 1.0 - Math.abs(nFine);
+
+         // Subtract the gully depth, scaling by altitude and erosion slider
+         h -= (gully * gully) * altitudeFactor * c_erosion * 65;
       }
 
       // Base surface texture (From original)

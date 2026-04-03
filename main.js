@@ -402,6 +402,7 @@ document.getElementById('generateMapBtn')?.addEventListener('click', () => {
     canyons: parseInt(document.getElementById('genCanyons').value, 10),
     deserts: parseInt(document.getElementById('genDeserts').value, 10),
     beaches: parseInt(document.getElementById('genBeaches').value, 10),
+    erosion: parseInt(document.getElementById('genErosion').value, 10),
   };
 
   // Clear local storage
