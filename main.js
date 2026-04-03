@@ -346,32 +346,7 @@ function menuClicks(command, tool) {
       if (playBtn) playBtn.textContent = appState.isPlaying ? 'Pause' : 'Play';
       break;
     case 'reset':
-      if (confirm("Are you sure you want to clear the map?")) {
-        const nextW = parseInt(document.getElementById('newWidth').value, 10) || 256;
-        const nextH = parseInt(document.getElementById('newHeight').value, 10) || 256;
-        // 1. Clear local storage
-        localStorage.removeItem('snorb_map_data');
-
-        // 2. Re-seed the map elevations and clear buildings
-        resizeMapState(nextW, nextH);
-        seedDemo();
-        buildingAt.fill(0);
-        mapSettings.waterLevel = 86; // Reset to default
-        const wEl = document.getElementById('waterLevel');
-        if (wEl) wEl.value = mapSettings.waterLevel;
-
-        // 3. Reset Camera: Center the view and zoom out completely
-        setTileInCenter(GRID_W / 2, GRID_H / 2);
-        camera.targetZoom = camera.minZoom;
-
-        // 4. Update GPU and Save
-        updatePaletteTexture();
-        uploadElevations();
-        rebuildBuildingInstances();
-        rebuildExtrusionBuffers();
-        rebuildCubeBuffers();
-        saveMapToLocal();
-      }
+      document.getElementById('newMapDialog').showModal();
       break;
     case 'open-file': uploadMapFile(); break;
     case 'save-file': downloadMapFile(); break;
@@ -415,6 +390,52 @@ function menuClicks(command, tool) {
   }
   saveMapToLocal();
 }
+
+document.getElementById('generateMapBtn')?.addEventListener('click', () => {
+  const nextW = parseInt(document.getElementById('newWidth').value, 10) || 256;
+  const nextH = parseInt(document.getElementById('newHeight').value, 10) || 256;
+
+  const config = {
+    islands: parseInt(document.getElementById('genIslands').value, 10),
+    mountains: parseInt(document.getElementById('genMountains').value, 10),
+    valleys: parseInt(document.getElementById('genValleys').value, 10),
+    canyons: parseInt(document.getElementById('genCanyons').value, 10),
+    deserts: parseInt(document.getElementById('genDeserts').value, 10),
+    beaches: parseInt(document.getElementById('genBeaches').value, 10),
+  };
+
+  // Clear local storage
+  localStorage.removeItem('snorb_map_data');
+
+  // Re-seed the map elevations with new terrain features
+  resizeMapState(nextW, nextH);
+  seedDemo(config);
+
+  // Clear map state
+  buildingAt.fill(0);
+  mapSettings.waterLevel = 86;
+  const wEl = document.getElementById('waterLevel');
+  if (wEl) wEl.value = mapSettings.waterLevel;
+
+  // Reset Camera: Center the view and zoom out completely
+  setTileInCenter(GRID_W / 2, GRID_H / 2);
+  camera.targetZoom = camera.minZoom;
+
+  // Update GPU and Save
+  updatePaletteTexture();
+  uploadElevations();
+  rebuildBuildingInstances();
+  rebuildExtrusionBuffers();
+  rebuildCubeBuffers();
+  saveMapToLocal();
+
+  document.getElementById('newMapDialog').close();
+  closeAllMenus();
+});
+
+document.getElementById('cancelMapBtn')?.addEventListener('click', () => {
+  document.getElementById('newMapDialog').close();
+});
 
 export function updateViewMenuUI() {
   const gridBtn = document.querySelector('button[data-command="toggle-grid"]');

@@ -34,14 +34,68 @@ import {
 } from './renderer.js';
 import { saveMapToLocal } from './main.js';
 
-export function seedDemo() {
+export function seedDemo(config = null) {
   const cx = Math.floor(GRID_W * 0.5), cy = Math.floor(GRID_H * 0.5);
+
+  // Default to the original island look if no config is provided
+  const cfg = config || { canyons: 0, islands: 80, valleys: 0, beaches: 0, deserts: 0, mountains: 0 };
+
+  const c_canyon = cfg.canyons / 100;
+  const c_island = cfg.islands / 100;
+  const c_valley = cfg.valleys / 100;
+  const c_beach = cfg.beaches / 100;
+  const c_desert = cfg.deserts / 100;
+  const c_mountain = cfg.mountains / 100;
+
+  // Random offsets ensure a unique map every time
+  const ox = Math.random() * 10000;
+  const oy = Math.random() * 10000;
+
   for (let y = 0; y < GRID_H; y++) {
     for (let x = 0; x < GRID_W; x++) {
+      const nx = x + ox;
+      const ny = y + oy;
+
+      // Base island falloff (distance from center)
       const r = Math.hypot((x - cx) / GRID_W, (y - cy) / GRID_H);
-      let h = Math.floor(Math.max(0, 1.0 - (r * 2.35)) * 160);
-      const n = (Math.sin(x * 0.09) * Math.cos(y * 0.07) + Math.sin((x + y) * 0.03) + Math.cos((x - y) * 0.05)) * 0.5;
-      elevations[y * GRID_W + x] = clamp(h + Math.floor((n + 1) * 18), 0, 255);
+      const islandFactor = c_island > 0 ? 1.0 - (r * (3.0 - c_island * 1.5)) : 1.0;
+      let h = c_island > 0 ? Math.max(0, islandFactor) * 120 : 86;
+
+      // Noise layers for structural variety
+      const nLow = (Math.sin(nx * 0.03) * Math.cos(ny * 0.02) + Math.sin((nx + ny) * 0.015)) * 0.5;
+      const nMid = (Math.sin(nx * 0.09) * Math.cos(ny * 0.07) + Math.sin((nx - ny) * 0.05)) * 0.5;
+      const nHigh = (Math.sin(nx * 0.2) * Math.cos(ny * 0.15)) * 0.5;
+
+      // Mountains (High amplitude, low frequency)
+      h += Math.max(0, nLow) * c_mountain * 200;
+      h += nMid * c_mountain * 50;
+
+      // Valleys (Carve out low-frequency trenches)
+      h -= Math.max(0, nLow) * c_valley * 100;
+
+      // Canyons (Sharp inverted ridges)
+      const canyonRidge = Math.abs(nMid);
+      if (c_canyon > 0 && canyonRidge < 0.15) {
+        h -= (0.15 - canyonRidge) * 10 * c_canyon * 120;
+      }
+
+      // Deserts (High frequency dunes)
+      if (c_desert > 0) {
+         h += nHigh * c_desert * 25;
+      }
+
+      // Beaches (Flatten out terrain near the water line)
+      if (c_beach > 0) {
+         const distToWater = Math.abs(h - 86);
+         if (distToWater < 30 * c_beach) {
+             h = 86 + (Math.sign(h - 86) * distToWater * (1.0 - c_beach));
+         }
+      }
+
+      // Base surface texture (From original)
+      h += (nMid + 1) * 18;
+
+      elevations[y * GRID_W + x] = clamp(Math.floor(h), 0, 255);
     }
   }
 }
