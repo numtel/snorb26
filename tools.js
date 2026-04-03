@@ -757,6 +757,7 @@ export function placeLemmingAt(x, y) {
         c: [Math.random(), Math.random(), Math.random()], // Color
         hasBuilt: false,
         hasResource: false,
+        resourceId: 0,
         isDigging: false,
         digTimer: 0,
         digAccumulator: 0,
@@ -871,9 +872,19 @@ export function updateLemmings(dt) {
 
         // Demolish logic
         if (!lem.hasBuilt && !lem.hasResource && buildingAt[cY * GRID_W + cX] > 0) {
+            lem.resourceId = buildingAt[cY * GRID_W + cX]; // Save exactly what they picked up
             buildingAt[cY * GRID_W + cX] = 0;
             lem.hasResource = true;
             buildingsChanged = true;
+        }
+        // Recreate logic (Random chance to drop the resource if they are holding one)
+        else if (lem.hasResource && lem.resourceId > 0 && buildingAt[cY * GRID_W + cX] === 0) {
+            if (Math.random() < 0.5 * dt) {
+                buildingAt[cY * GRID_W + cX] = lem.resourceId;
+                lem.resourceId = 0; // Consume the stored block so they only place it once
+                // Note: we do NOT reset lem.hasResource = false, so they still retain their ability to build a house!
+                buildingsChanged = true;
+            }
         }
 
         const currentH = elevations[cY * GRID_W + cX];
@@ -1052,6 +1063,7 @@ export function updateLemmings(dt) {
                     c: [Math.random(), Math.random(), Math.random()],
                     hasBuilt: false,
                     hasResource: false,
+                    resourceId: 0,
                     isDigging: false,
                     digTimer: 0,
                     digAccumulator: 0,

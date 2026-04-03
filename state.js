@@ -251,6 +251,7 @@ export function serializeMap() {
       ['x', l.x], ['y', l.y], ['a', l.a], ['s', l.s],
       ['c', l.c.join(', ')], ['hasBuilt', l.hasBuilt || false],
       ['hasResource', l.hasResource || false],
+      ['resourceId', l.resourceId || 0],
     ];
     if (l.isDigging) {
       props.push(['isDigging', l.isDigging]);
@@ -454,6 +455,7 @@ export function deserializeMap(text) {
           c: props.c.split(',').map(Number),
           hasBuilt: props.hasBuilt === 'true',
           hasResource: props.hasResource === 'true',
+          resourceId: parseInt(props.resourceId) || 0,
           isDigging: props.isDigging === 'true',
           digTimer: parseFloat(props.digTimer) || 0,
           digAccumulator: 0,
