@@ -34,6 +34,9 @@ import {
 } from './renderer.js';
 import { saveMapToLocal } from './main.js';
 
+let workerPool = [];
+let isUpdatingLemmings = false;
+
 export function seedDemo(config = null) {
   const cx = Math.floor(GRID_W * 0.5), cy = Math.floor(GRID_H * 0.5);
 
@@ -790,371 +793,6 @@ export function placeLemmingAt(x, y) {
     });
 }
 
-export function updateLemmings(dt) {
-    let buildingsChanged = false;
-    let terrainChanged = false;
-
-    // --- OPTIMIZATION 1: Cache Obstacle Data ---
-    // Precalculate trig and bounding boxes for cubes once per frame
-    // rather than calculating them inside the lemming loop.
-    const cubeCache = cubes.map(c => {
-        const cosR = Math.cos(c.r || 0);
-        const sinR = Math.sin(c.r || 0);
-        const hw = c.w / 2;
-        const hl = (c.l !== undefined ? c.l : c.w) / 2;
-        const radius = Math.hypot(hw, hl); // For quick circle intersection rejection
-        return { c, cosR, sinR, hw, hl, radius, lemmingsInside: 0 };
-    });
-
-    const extCache = extrusions.map(ext => {
-        return { ext, minSqDist: Math.pow(ext.width / 2 + 0.2, 2) };
-    });
-
-    for (let lem of lemmings) {
-        // --- TICK REST TIMER ---
-        if (lem.danceRestTimer > 0) {
-            lem.danceRestTimer -= dt;
-        }
-        // --- DANCER STATE LOGIC ---
-        if (lem.isDancing) {
-            lem.danceTimer -= dt;
-            if (lem.danceTimer <= 0) {
-                lem.isDancing = false;
-                // Give them a 15-30 second break before they can dance again
-                lem.danceRestTimer = 15.0 + Math.random() * 15.0;
-            } else {
-                // Infect nearby lemmings with the groove and merge colors
-                for (let other of lemmings) {
-                    if (lem === other) continue;
-                    const dSq = (lem.x - other.x)**2 + (lem.y - other.y)**2;
-                    if (dSq < 9.0) {
-                        // Only infect if they are NOT resting
-                        if (!other.isDancing && !other.isDigging && !other.isRaising && (other.danceRestTimer || 0) <= 0) {
-                            other.isDancing = true;
-                            other.danceTimer = 4.0 + Math.random() * 6.0;
-                        }
-                        if (other.isDancing) {
-                            const blend = 0.5 * dt;
-                            lem.c[0] += (other.c[0] - lem.c[0]) * blend;
-                            lem.c[1] += (other.c[1] - lem.c[1]) * blend;
-                            lem.c[2] += (other.c[2] - lem.c[2]) * blend;
-                        }
-                    }
-                }
-            }
-            continue;
-        }
-        // --- DIGGER STATE LOGIC ---
-        if (lem.isDigging) {
-            lem.digTimer -= dt;
-            lem.digAccumulator = (lem.digAccumulator || 0) + dt;
-
-            // Lower the terrain every 0.5 seconds
-            if (lem.digAccumulator >= 0.5) {
-                lem.digAccumulator = 0;
-                const cX = Math.floor(lem.x), cY = Math.floor(lem.y);
-                const idx = cY * GRID_W + cX;
-
-                // Dig down until they hit water
-                if (elevations[idx] > mapSettings.waterLevel) {
-                    elevations[idx] = Math.max(0, elevations[idx] - 1);
-                    terrainChanged = true;
-                } else {
-                    lem.digTimer = 0; // Stop digging if they hit the water table
-                }
-            }
-
-            if (lem.digTimer <= 0) {
-                lem.isDigging = false;
-            }
-            continue; // Skip movement while digging
-        }
-        // --- PATH MAKER / RAISER STATE LOGIC ---
-        if (lem.isRaising) {
-            lem.raiseTimer -= dt;
-            lem.raiseAccumulator = (lem.raiseAccumulator || 0) + dt;
-
-            if (lem.raiseAccumulator >= 0.5) {
-                lem.raiseAccumulator = 0;
-
-                // Calculate the tile 1 unit forward
-                let nx = lem.x + Math.cos(lem.a);
-                let ny = lem.y + Math.sin(lem.a);
-
-                if (nx >= 0 && nx < GRID_W - 1 && ny >= 0 && ny < GRID_H - 1) {
-                    const cX = Math.floor(lem.x), cY = Math.floor(lem.y);
-                    const nX = Math.floor(nx), nY = Math.floor(ny);
-                    const currentIdx = cY * GRID_W + cX;
-                    const nextIdx = nY * GRID_W + nX;
-
-                    // Target height is either current height or just above water, whichever is higher
-                    const targetH = Math.max(elevations[currentIdx], mapSettings.waterLevel + 1);
-
-                    if (elevations[nextIdx] < targetH) {
-                        elevations[nextIdx] = targetH;
-                        terrainChanged = true;
-                    } else if (elevations[nextIdx] - elevations[currentIdx] > 5) {
-                        // Stop building and turn around if they hit a massive cliff
-                        lem.isRaising = false;
-                        lem.a += Math.PI;
-                        continue;
-                    }
-
-                    // Step forward onto the newly created path
-                    lem.x = nx;
-                    lem.y = ny;
-                } else {
-                    lem.a += Math.PI; // Turn around if hitting the world edge
-                }
-            }
-
-            if (lem.raiseTimer <= 0) {
-                lem.isRaising = false;
-            }
-            continue; // Skip normal movement
-        }
-
-        // --- NORMAL WANDERING LOGIC ---
-        let nx = lem.x + Math.cos(lem.a) * lem.s * dt;
-        let ny = lem.y + Math.sin(lem.a) * lem.s * dt;
-
-        if (nx < 0 || nx >= GRID_W - 1 || ny < 0 || ny >= GRID_H - 1) {
-            lem.a += Math.PI;
-            continue;
-        }
-
-        const cX = Math.floor(lem.x), cY = Math.floor(lem.y);
-        const nX = Math.floor(nx), nY = Math.floor(ny);
-
-        // Demolish logic
-        if (!lem.hasBuilt && !lem.hasResource && buildingAt[cY * GRID_W + cX] > 0) {
-            lem.resourceId = buildingAt[cY * GRID_W + cX]; // Save exactly what they picked up
-            buildingAt[cY * GRID_W + cX] = 0;
-            lem.hasResource = true;
-            buildingsChanged = true;
-        }
-        // Recreate logic (Random chance to drop the resource if they are holding one)
-        else if (lem.hasResource && lem.resourceId > 0 && buildingAt[cY * GRID_W + cX] === 0) {
-            if (Math.random() < 0.5 * dt) {
-                buildingAt[cY * GRID_W + cX] = lem.resourceId;
-                lem.resourceId = 0; // Consume the stored block so they only place it once
-                // Note: we do NOT reset lem.hasResource = false, so they still retain their ability to build a house!
-                buildingsChanged = true;
-            }
-        }
-
-        const currentH = elevations[cY * GRID_W + cX];
-        const nextH = elevations[nY * GRID_W + nX];
-
-        let hitObstacle = false;
-
-        // Optimized Path check
-        for (const cache of extCache) {
-            const ext = cache.ext;
-            for (let i = 0; i < ext.points.length - 1; i++) {
-                if (distToSegmentSq({x: nx, y: ny}, ext.points[i], ext.points[i+1]) < cache.minSqDist) {
-                    hitObstacle = true; break;
-                }
-            }
-            if (hitObstacle) break;
-        }
-
-        // Optimized Cube check
-        if (!hitObstacle) {
-            for (const cache of cubeCache) {
-                // Quick bounding radius rejection
-                if (Math.abs(nx - cache.c.x) > cache.radius + 1 || Math.abs(ny - cache.c.y) > cache.radius + 1) continue;
-
-                // Detailed rotated check
-                const dx = nx - cache.c.x;
-                const dy = ny - cache.c.y;
-                const lx = dx * cache.cosR + dy * cache.sinR;
-                const ly = -dx * cache.sinR + dy * cache.cosR;
-                if (Math.abs(lx) <= cache.hw && Math.abs(ly) <= cache.hl) {
-                    hitObstacle = true; break;
-                }
-            }
-        }
-
-        if (hitObstacle || Math.abs(currentH - nextH) > 5 || nextH <= mapSettings.waterLevel) {
-            lem.a += (Math.random() * Math.PI) + Math.PI / 2;
-        } else {
-            lem.x = nx;
-            lem.y = ny;
-        }
-
-        if (Math.random() < 0.05) lem.a += (Math.random() - 0.5);
-
-        // --- THE SPINE AWAKENS (Very Rare Growth Spurt) ---
-        if (!lem.grownUp && Math.random() < 0.001 * dt) {
-            lem.grownUp = true;
-        }
-
-        // --- CHANCE TO BECOME A DIGGER, RAISER, OR DANCER ---
-        if (!lem.isDigging && !lem.isRaising && !lem.isDancing) {
-            // Check the rest timer before spontaneously dancing
-            if (lem.danceRestTimer <= 0 && Math.random() < 0.01 * dt) { // 1% chance to start a dance
-                lem.isDancing = true;
-                lem.danceTimer = 5.0 + Math.random() * 5.0; // Dance for 5 to 10 seconds
-            } else if (Math.random() < 0.02 * dt) { // 2% chance to start digging
-                lem.isDigging = true;
-                lem.digTimer = 4.0 + Math.random() * 4.0; // Dig for 4 to 8 seconds
-                lem.digAccumulator = 0;
-            } else if (Math.random() < 0.02 * dt) { // 2% chance to start raising
-                lem.isRaising = true;
-                lem.raiseTimer = 4.0 + Math.random() * 4.0; // Raise path for 4 to 8 seconds
-                lem.raiseAccumulator = 0;
-            }
-        }
-    }
-
-    let cubesAdded = false;
-
-    // --- OPTIMIZATION 2: Spatial Partitioning for Builders ---
-    // Drastically reduces O(N^2) pairs check to O(N) by grouping lemmings into a 1x1 tile grid
-    const spatialGrid = new Map();
-    for (let lem of lemmings) {
-        if (lem.hasBuilt || !lem.hasResource) continue;
-        const key = Math.floor(lem.x) + ',' + Math.floor(lem.y);
-        let cell = spatialGrid.get(key);
-        if (!cell) { cell = []; spatialGrid.set(key, cell); }
-        cell.push(lem);
-    }
-
-    for (const [key, cellLemmings] of spatialGrid.entries()) {
-        const [cx, cy] = key.split(',').map(Number);
-
-        // Only check the current cell and right/bottom neighbors to avoid double-checking
-        const neighborKeys = [
-            key,
-            (cx + 1) + ',' + cy,
-            cx + ',' + (cy + 1),
-            (cx + 1) + ',' + (cy + 1),
-            (cx - 1) + ',' + (cy + 1)
-        ];
-
-        for (let i = 0; i < cellLemmings.length; i++) {
-            let l1 = cellLemmings[i];
-            if (l1.hasBuilt) continue;
-
-            for (const nKey of neighborKeys) {
-                const neighborLemmings = spatialGrid.get(nKey);
-                if (!neighborLemmings) continue;
-
-                for (let j = 0; j < neighborLemmings.length; j++) {
-                    let l2 = neighborLemmings[j];
-
-                    // If scanning the identical cell, prevent duplicate pair checking
-                    if (key === nKey && j <= i) continue;
-                    if (l2.hasBuilt) continue;
-
-                    let dSq = (l1.x - l2.x)**2 + (l1.y - l2.y)**2;
-                    if (dSq < 0.5) {
-                        let mx = (l1.x + l2.x) / 2;
-                        let my = (l1.y + l2.y) / 2;
-                        let size = 1 + Math.random() * 2.5;
-                        let hw = size / 2, hl = size / 2;
-                        let a1 = l1.a, a2 = l2.a;
-
-                        cubes.push({
-                            x: mx, y: my,
-                            w: size, l: size,
-                            h: 2 + Math.random() * 6,
-                            r: Math.random() * Math.PI,
-                            c: [ (l1.c[0] + l2.c[0]) / 2, (l1.c[1] + l2.c[1]) / 2, (l1.c[2] + l2.c[2]) / 2 ],
-                            // Store uniquely generated corners based on their collision angles
-                            customPts: [
-                                -hw + Math.cos(a1) * Math.random(), -hl + Math.sin(a1) * Math.random(),
-                                 hw + Math.cos(a2) * Math.random(), -hl + Math.sin(a2) * Math.random(),
-                                -hw + Math.cos(a2) * Math.random(),  hl + Math.sin(a1) * Math.random(),
-                                 hw + Math.cos(a1) * Math.random(),  hl + Math.sin(a2) * Math.random()
-                            ],
-                        });
-                        cubesAdded = true;
-
-                        l1.a += Math.PI; l2.a += Math.PI;
-                        l1.hasBuilt = true; l2.hasBuilt = true;
-                        break; // Stop looking for a partner for l1
-                    }
-                }
-                if (l1.hasBuilt) break; // Break out of neighbor loop if they found a partner
-            }
-        }
-    }
-
-    // Check for lemmings reproducing inside cubes
-    // --- OPTIMIZATION 3: Single-Pass Reproduction Bounds Checking ---
-    // Collect reproduction data in one pass over the lemmings using the cached collision data
-    for (let lem of lemmings) {
-        for (const cache of cubeCache) {
-            // Broad-phase circle reject
-            if (Math.abs(lem.x - cache.c.x) > cache.radius || Math.abs(lem.y - cache.c.y) > cache.radius) continue;
-
-            const dx = lem.x - cache.c.x;
-            const dy = lem.y - cache.c.y;
-            const lx = dx * cache.cosR + dy * cache.sinR;
-            const ly = -dx * cache.sinR + dy * cache.cosR;
-
-            if (Math.abs(lx) <= cache.hw && Math.abs(ly) <= cache.hl) {
-                cache.lemmingsInside++;
-            }
-        }
-    }
-
-    let needsBufferRebuild = cubesAdded;
-
-    if(appState.enableReproduction) {
-      for (let cache of cubeCache) {
-          let c = cache.c;
-          if (cache.lemmingsInside >= 2) {
-              c.reproduceTimer = (c.reproduceTimer || 0) + dt;
-              if (c.reproduceTimer >= 30.0) { // Produces a new lemming every 30 seconds
-                  c.reproduceTimer = 0;
-                  c.h += 1.5; // Increase the cube's height
-                  needsBufferRebuild = true;
-
-                  // Calculate a position just outside the cube's bounds
-                  const maxDim = Math.max(c.w, c.l !== undefined ? c.l : c.w);
-                  const spawnRadius = (maxDim / 2) + 0.5;
-                  const angle = Math.random() * Math.PI * 2;
-
-                  const spawnX = clamp(c.x + Math.cos(angle) * spawnRadius, 1, GRID_W - 2);
-                  const spawnY = clamp(c.y + Math.sin(angle) * spawnRadius, 1, GRID_H - 2);
-
-                  lemmings.push({
-                      x: spawnX,
-                      y: spawnY,
-                      a: angle,
-                      s: 1.5 + Math.random() * 2.5,
-                      c: [Math.random(), Math.random(), Math.random()],
-                      hasBuilt: false,
-                      hasResource: false,
-                      resourceId: 0,
-                      isDigging: false,
-                      digTimer: 0,
-                      digAccumulator: 0,
-                      isRaising: false,
-                      raiseTimer: 0,
-                      raiseAccumulator: 0,
-                      isDancing: false,
-                      danceTimer: 0,
-                      grownUp: false,
-                  });
-              }
-          } else {
-              c.reproduceTimer = 0;
-          }
-      }
-    }
-
-    if (terrainChanged) uploadElevations();
-
-    if (needsBufferRebuild || buildingsChanged || terrainChanged) {
-        if (needsBufferRebuild) rebuildCubeBuffers();
-        if (buildingsChanged) rebuildBuildingInstances();
-        saveMapToLocal();
-    }
-}
 
 export function queryDown(tx, ty) {
     // 1. Check Lemmings (1 tile radius)
@@ -1191,4 +829,120 @@ export function queryDown(tx, ty) {
 
     appState.queryTarget = null;
     return null;
+}
+
+export async function updateLemmings(dt) {
+    if (isUpdatingLemmings || lemmings.length === 0) return;
+    isUpdatingLemmings = true;
+
+    if (workerPool.length === 0) {
+        // Spin up a worker for each logical CPU core
+        const cores = navigator.hardwareConcurrency || 4;
+        for (let i = 0; i < cores; i++) {
+            workerPool.push(new Worker('lemmingWorker.js'));
+        }
+    }
+
+    const cores = workerPool.length;
+    const chunkSize = Math.ceil(lemmings.length / cores);
+    const promises = [];
+
+    // Dispatch workloads to the cores
+    for (let i = 0; i < cores; i++) {
+        const start = i * chunkSize;
+        const end = Math.min(start + chunkSize, lemmings.length);
+        if (start >= lemmings.length) continue;
+
+        promises.push(new Promise(resolve => {
+            workerPool[i].onmessage = (e) => resolve(e.data);
+            workerPool[i].postMessage({
+                dt, start, end,
+                lemmings, cubes, extrusions, elevations, buildingAt, mapSettings,
+                GRID_W, GRID_H, enableReproduction: appState.enableReproduction
+            });
+        }));
+    }
+
+    // Wait for all cores to finish calculating the frame
+    const results = await Promise.all(promises);
+
+    let terrainChanged = false;
+    let buildingsChanged = false;
+    let needsBufferRebuild = false;
+
+    // Merge the multiverse timelines back into our single reality
+    for (const res of results) {
+        // 1. Splice updated lemming chunks back in
+        for (let i = 0; i < res.updatedLemmings.length; i++) {
+            lemmings[res.start + i] = res.updatedLemmings[i];
+        }
+
+        // 2. Add New Cubes
+        if (res.newCubes.length > 0) {
+            cubes.push(...res.newCubes);
+            needsBufferRebuild = true;
+        }
+
+        // 3. Apply terrain digging/raising
+        for (const t of res.terrainChanges) {
+            elevations[t.idx] = t.h;
+            terrainChanged = true;
+        }
+
+        // 4. Apply demolition and building
+        for (const b of res.buildingChanges) {
+            buildingAt[b.idx] = b.id;
+            buildingsChanged = true;
+        }
+
+    }
+
+    // --- AGGREGATE OCCUPANCY AND HANDLE REPRODUCTION ---
+    if (appState.enableReproduction) {
+        let totalCubeOccupancy = {};
+        // Sum up the counts from all workers
+        for (const res of results) {
+            for (const cubeIdx in res.cubeOccupancy) {
+                totalCubeOccupancy[cubeIdx] = (totalCubeOccupancy[cubeIdx] || 0) + res.cubeOccupancy[cubeIdx];
+            }
+        }
+
+        // Trigger reproduction on the main thread based on the combined totals
+        for (let i = 0; i < cubes.length; i++) {
+            let c = cubes[i];
+            if (totalCubeOccupancy[i] >= 2) {
+                c.reproduceTimer = (c.reproduceTimer || 0) + dt;
+                if (c.reproduceTimer >= 30.0) {
+                    c.reproduceTimer = 0;
+                    c.h += 1.5; // Grow the cube
+                    needsBufferRebuild = true;
+
+                    const spawnRadius = (Math.max(c.w, c.l !== undefined ? c.l : c.w) / 2) + 0.5;
+                    const angle = Math.random() * Math.PI * 2;
+                    lemmings.push({
+                        x: clamp(c.x + Math.cos(angle) * spawnRadius, 1, GRID_W - 2),
+                        y: clamp(c.y + Math.sin(angle) * spawnRadius, 1, GRID_H - 2),
+                        a: angle, s: 1.5 + Math.random() * 2.5,
+                        c: [Math.random(), Math.random(), Math.random()],
+                        hasBuilt: false, hasResource: false, resourceId: 0,
+                        isDigging: false, digTimer: 0, digAccumulator: 0,
+                        isRaising: false, raiseTimer: 0, raiseAccumulator: 0,
+                        isDancing: false, danceTimer: 0, grownUp: false,
+                    });
+                }
+            } else {
+                c.reproduceTimer = 0; // Reset timer if lemmings leave
+            }
+        }
+    }
+
+    // Flush updates to the GPU
+    if (terrainChanged) uploadElevations();
+    if (needsBufferRebuild || buildingsChanged || terrainChanged) {
+        if (needsBufferRebuild) rebuildCubeBuffers();
+        if (buildingsChanged) rebuildBuildingInstances();
+        saveMapToLocal();
+    }
+
+    isUpdatingLemmings = false;
 }

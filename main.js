@@ -391,7 +391,6 @@ function menuClicks(command, tool) {
       break;
     case 'toggle-reproduction':
       appState.enableReproduction = !appState.enableReproduction;
-      console.log(appState);
       updateViewMenuUI();
       break;
     default:
@@ -829,6 +828,7 @@ function tick(now) {
   if (appState.isPlaying) {
     appState.gameTime += dtReal * appState.gameSpeed;
     const dtLemming = (dtReal / 1000) * appState.gameSpeed;
+    // Fire the async update. The lock in tools.js handles overlap prevention.
     if (dtLemming > 0) updateLemmings(dtLemming);
   }
 
