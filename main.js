@@ -460,6 +460,8 @@ export function updateViewMenuUI() {
   if (reproBtn) {
     reproBtn.classList.toggle('active', appState.enableReproduction);
   }
+  const playBtn = document.querySelector('button[data-command="toggle-play"]');
+  if (playBtn) playBtn.textContent = appState.isPlaying ? 'Pause' : 'Play';
 }
 
 window.addEventListener('pointerup', (e) => {
