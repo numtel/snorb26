@@ -284,6 +284,7 @@ window.addEventListener('keydown', (e) => {
     closeAllMenus();
     return;
   }
+  if(document.querySelector('dialog[open]') !== null) return;
   const tool = document.querySelector(`button[data-key="${code}"]`);
   if(tool) {
     const cmd = tool.dataset.command;
