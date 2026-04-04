@@ -206,9 +206,10 @@
     lemmingBuf = gl.createBuffer();
     gl.bindVertexArray(lemmingVao);
     gl.bindBuffer(gl.ARRAY_BUFFER, lemmingBuf);
-    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 24, 0);  // Position
-    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 24, 8);  // Angle
-    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 24, 12); // Color
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 28, 0);  // Position
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 28, 8);  // Angle
+    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 28, 12); // Color
+    gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 1, gl.FLOAT, false, 28, 24); // Size Multiplier
   }
 
   function setupTextures() {
@@ -729,11 +730,12 @@ export function draw(now) {
 
   // DRAW LEMMINGS
   if (lemmings.length > 0) {
-    const arr = new Float32Array(lemmings.length * 6);
+    const arr = new Float32Array(lemmings.length * 7);
     for (let i = 0; i < lemmings.length; i++) {
-        arr[i*6+0] = lemmings[i].x; arr[i*6+1] = lemmings[i].y;
-        arr[i*6+2] = lemmings[i].a;
-        arr[i*6+3] = lemmings[i].c[0]; arr[i*6+4] = lemmings[i].c[1]; arr[i*6+5] = lemmings[i].c[2];
+        arr[i*7+0] = lemmings[i].x; arr[i*7+1] = lemmings[i].y;
+        arr[i*7+2] = lemmings[i].a;
+        arr[i*7+3] = lemmings[i].c[0]; arr[i*7+4] = lemmings[i].c[1]; arr[i*7+5] = lemmings[i].c[2];
+        arr[i*7+6] = lemmings[i].grownUp ? 1.8 : 1.0;
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, lemmingBuf);
     gl.bufferData(gl.ARRAY_BUFFER, arr, gl.DYNAMIC_DRAW);

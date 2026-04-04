@@ -332,6 +332,7 @@ precision highp float;
 layout(location=0) in vec2 a_pos;
 layout(location=1) in float a_angle;
 layout(location=2) in vec3 a_color;
+layout(location=3) in float a_size;
 
 uniform vec2 u_viewSize; uniform vec2 u_pan; uniform float u_zoom;
 uniform float u_tileW; uniform float u_tileH; uniform float u_elevStep;
@@ -367,7 +368,7 @@ void main() {
     gl_Position = vec4(clip, depthZ, 1.0);
 
     // Make the point larger so we have enough canvas to draw a procedural person
-    gl_PointSize = max(16.0, 48.0 * u_zoom);
+    gl_PointSize = max(16.0, 48.0 * u_zoom) * a_size;
     v_color = a_color;
 
     // Add camera rotation to the lemming's world angle so they flip directions relative to the screen

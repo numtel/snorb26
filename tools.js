@@ -783,6 +783,7 @@ export function placeLemmingAt(x, y) {
         isRaising: false,
         raiseTimer: 0,
         raiseAccumulator: 0,
+        grownUp: false,
     });
 }
 
@@ -948,6 +949,11 @@ export function updateLemmings(dt) {
 
         if (Math.random() < 0.05) lem.a += (Math.random() - 0.5);
 
+        // --- THE SPINE AWAKENS (Very Rare Growth Spurt) ---
+        if (!lem.grownUp && Math.random() < 0.001 * dt) {
+            lem.grownUp = true;
+        }
+
         // --- CHANCE TO BECOME A DIGGER OR RAISER ---
         if (!lem.isDigging && !lem.isRaising) {
             if (Math.random() < 0.02 * dt) {
@@ -1089,6 +1095,7 @@ export function updateLemmings(dt) {
                     isRaising: false,
                     raiseTimer: 0,
                     raiseAccumulator: 0,
+                    grownUp: false,
                 });
             }
         } else {

@@ -261,6 +261,7 @@ export function serializeMap() {
       props.push(['isRaising', l.isRaising]);
       props.push(['raiseTimer', (l.raiseTimer || 0).toFixed(2)]);
     }
+    props.push(['grownUp', l.grownUp || false]);
     out += formatBlock('lemming', l, props);
   });
 
@@ -462,6 +463,7 @@ export function deserializeMap(text) {
           isRaising: props.isRaising === 'true',
           raiseTimer: parseFloat(props.raiseTimer) || 0,
           raiseAccumulator: 0,
+          grownUp: props.grownUp === 'true',
         };
         data.lemmings.push(lem);
       }
