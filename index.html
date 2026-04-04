@@ -38,6 +38,8 @@
         <button data-tool="pan" class="active" data-key="1">Pan</button>
         <button data-tool="orbit" data-key="2">Orbit</button>
         <div class="hr"></div>
+        <button data-tool="query" data-key="Y">Query Object</button>
+        <div class="hr"></div>
         <button data-tool="raise" data-key="3">Raise</button>
         <button data-tool="lower" data-key="4">Lower</button>
         <button data-tool="smooth" data-key="5">Smooth</button>
@@ -170,6 +172,17 @@
       <form method="dialog" style="margin-top: 15px;">
         <button class="button">Ok</button>
       </form>
+    </div>
+  </dialog>
+  <dialog id="queryDialog">
+    <div class="content">
+      <h2 id="queryTitle">Query Object</h2>
+      <div class="content" id="queryContent" style="max-height: 50vh; overflow-y: auto;">
+      </div>
+      <div class="controls">
+        <button class="button" id="cancelQueryBtn">Cancel</button>
+        <button class="button" id="saveQueryBtn">Apply</button>
+      </div>
     </div>
   </dialog>
   <script type="module" src="main.js"></script>

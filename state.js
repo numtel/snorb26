@@ -72,6 +72,7 @@ export const appState = {
   editPathNodeIndex: -1,
   activeCubeIndex: -1,
   activeCubeHandle: -1,
+  queryTarget: null,
   isPlaying: true,
   gameSpeed: 1.0,
   gameTime: 0,

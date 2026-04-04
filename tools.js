@@ -1111,3 +1111,40 @@ export function updateLemmings(dt) {
         saveMapToLocal();
     }
 }
+
+export function queryDown(tx, ty) {
+    // 1. Check Lemmings (1 tile radius)
+    let minDist = 1.0;
+    let foundLemming = -1;
+    for (let i = 0; i < lemmings.length; i++) {
+        const l = lemmings[i];
+        const d = (l.x - tx)**2 + (l.y - ty)**2;
+        if (d < minDist) { minDist = d; foundLemming = i; }
+    }
+    if (foundLemming !== -1) {
+        appState.queryTarget = { type: 'lemming', index: foundLemming };
+        return appState.queryTarget;
+    }
+
+    // 2. Check Cubes
+    for (let i = cubes.length - 1; i >= 0; i--) {
+        if (isInsideCube(tx, ty, cubes[i])) {
+            appState.queryTarget = { type: 'cube', index: i };
+            return appState.queryTarget;
+        }
+    }
+
+    // 3. Check Paths
+    for (let i = 0; i < extrusions.length; i++) {
+        const ext = extrusions[i];
+        for (let j = 0; j < ext.points.length - 1; j++) {
+            if (distToSegmentSq({x: tx, y: ty}, ext.points[j], ext.points[j+1]) < 2.0) {
+                appState.queryTarget = { type: 'path', index: i };
+                return appState.queryTarget;
+            }
+        }
+    }
+
+    appState.queryTarget = null;
+    return null;
+}
