@@ -333,6 +333,7 @@ layout(location=0) in vec2 a_pos;
 layout(location=1) in float a_angle;
 layout(location=2) in vec3 a_color;
 layout(location=3) in float a_size;
+layout(location=4) in float a_dance;
 
 uniform vec2 u_viewSize; uniform vec2 u_pan; uniform float u_zoom;
 uniform float u_tileW; uniform float u_tileH; uniform float u_elevStep;
@@ -341,6 +342,7 @@ uniform highp usampler2D u_elevTex;
 
 out vec3 v_color;
 out float v_angle;
+out float v_dance;
 
 float getInterpolatedHeight(vec2 pos) {
     vec2 p = clamp(pos, vec2(0.0), vec2(float(u_gridW - 1), float(u_gridH - 1)));
@@ -373,12 +375,15 @@ void main() {
 
     // Add camera rotation to the lemming's world angle so they flip directions relative to the screen
     v_angle = a_angle + u_rotation;
+
+    v_dance = a_dance;
 }`;
 
 export const fsLemming = `#version 300 es
 precision highp float;
 in vec3 v_color;
 in float v_angle;
+in float v_dance;
 uniform float u_time;
 out vec4 fragColor;
 
@@ -401,31 +406,57 @@ void main() {
 
     // Walk cycle animation (offset by angle so they don't all march perfectly in sync)
     float walk = u_time * 15.0 + v_angle * 10.0;
+    // Time calculations for regular walk vs dance
+    float danceTime = u_time * 24.0 + v_angle * 5.0;
 
-    // Bob the whole body up and down while walking
-    float bob = abs(sin(walk)) * 0.08;
-    uv.y -= bob;
+    // Bob up and down (jump higher when dancing)
+    float walkBob = abs(sin(walk)) * 0.08;
+    float danceBob = abs(sin(danceTime)) * 0.15 + 0.05;
+    uv.y -= mix(walkBob, danceBob, v_dance);
 
     float d = 1.0;
     float r = 0.12; // Limb thickness
 
-    // 1. Head
-    d = min(d, length(uv - vec2(0.0, 0.5)) - 0.2);
+    // --- Hip Sway Logic ---
+    float hipSway = sin(danceTime * 0.5) * 0.2 * v_dance;
+    vec2 hipPos = vec2(hipSway, -0.2);
 
-    // 2. Torso
-    d = min(d, sdSegment(uv, vec2(0.0, 0.3), vec2(0.0, -0.2)) - r);
+    // 1. Head (Adds a slight head bob to match the hips)
+    vec2 headPos = vec2(hipSway * 0.3, 0.5);
+    d = min(d, length(uv - headPos) - 0.2);
 
-    // 3. Legs
-    vec2 leftFoot = vec2(sin(walk)*0.3, -0.6 + cos(walk)*0.1);
-    vec2 rightFoot = vec2(-sin(walk)*0.3, -0.6 - cos(walk)*0.1);
-    d = min(d, sdSegment(uv, vec2(0.0, -0.2), leftFoot) - r);
-    d = min(d, sdSegment(uv, vec2(0.0, -0.2), rightFoot) - r);
+    // 2. Torso (Connects static shoulders down to the swaying hips)
+    vec2 shoulderPos = vec2(0.0, 0.3);
+    d = min(d, sdSegment(uv, shoulderPos, hipPos) - r);
 
-    // 4. Arms
-    vec2 leftHand = vec2(-cos(walk)*0.3, 0.0 - sin(walk)*0.1);
-    vec2 rightHand = vec2(cos(walk)*0.3, 0.0 + sin(walk)*0.1);
-    d = min(d, sdSegment(uv, vec2(0.0, 0.2), leftHand) - 0.08);
-    d = min(d, sdSegment(uv, vec2(0.0, 0.2), rightHand) - 0.08);
+    // 3. Legs (Anchored to the moving hips instead of 0.0)
+    vec2 leftFoot = mix(
+        vec2(sin(walk)*0.3, -0.6 + cos(walk)*0.1),
+        vec2(-0.2 - sin(danceTime)*0.1, -0.6 + cos(danceTime)*0.2), // Tapping out
+        v_dance
+    );
+    vec2 rightFoot = mix(
+        vec2(-sin(walk)*0.3, -0.6 - cos(walk)*0.1),
+        vec2(0.2 + sin(danceTime)*0.1, -0.6 + sin(danceTime)*0.2), // Tapping out
+        v_dance
+    );
+    d = min(d, sdSegment(uv, hipPos, leftFoot) - r);
+    d = min(d, sdSegment(uv, hipPos, rightFoot) - r);
+
+    // 4. Arms (Waving side to side with the groove)
+    vec2 leftHand = mix(
+        vec2(-cos(walk)*0.3, 0.0 - sin(walk)*0.1),
+        vec2(-0.4 + hipSway, 0.1 + sin(danceTime)*0.2),
+        v_dance
+    );
+    vec2 rightHand = mix(
+        vec2(cos(walk)*0.3, 0.0 + sin(walk)*0.1),
+        vec2(0.4 + hipSway, 0.1 + cos(danceTime)*0.2),
+        v_dance
+    );
+    vec2 armPivot = vec2(0.0, 0.2); // Pivot just below the shoulders
+    d = min(d, sdSegment(uv, armPivot, leftHand) - 0.08);
+    d = min(d, sdSegment(uv, armPivot, rightHand) - 0.08);
 
     // Smooth anti-aliasing
     float alpha = smoothstep(0.05, 0.0, d);

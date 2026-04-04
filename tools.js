@@ -783,6 +783,9 @@ export function placeLemmingAt(x, y) {
         isRaising: false,
         raiseTimer: 0,
         raiseAccumulator: 0,
+        isDancing: false,
+        danceTimer: 0,
+        danceRestTimer: 0,
         grownUp: false,
     });
 }
@@ -808,6 +811,39 @@ export function updateLemmings(dt) {
     });
 
     for (let lem of lemmings) {
+        // --- TICK REST TIMER ---
+        if (lem.danceRestTimer > 0) {
+            lem.danceRestTimer -= dt;
+        }
+        // --- DANCER STATE LOGIC ---
+        if (lem.isDancing) {
+            lem.danceTimer -= dt;
+            if (lem.danceTimer <= 0) {
+                lem.isDancing = false;
+                // Give them a 15-30 second break before they can dance again
+                lem.danceRestTimer = 15.0 + Math.random() * 15.0;
+            } else {
+                // Infect nearby lemmings with the groove and merge colors
+                for (let other of lemmings) {
+                    if (lem === other) continue;
+                    const dSq = (lem.x - other.x)**2 + (lem.y - other.y)**2;
+                    if (dSq < 9.0) {
+                        // Only infect if they are NOT resting
+                        if (!other.isDancing && !other.isDigging && !other.isRaising && (other.danceRestTimer || 0) <= 0) {
+                            other.isDancing = true;
+                            other.danceTimer = 4.0 + Math.random() * 6.0;
+                        }
+                        if (other.isDancing) {
+                            const blend = 0.5 * dt;
+                            lem.c[0] += (other.c[0] - lem.c[0]) * blend;
+                            lem.c[1] += (other.c[1] - lem.c[1]) * blend;
+                            lem.c[2] += (other.c[2] - lem.c[2]) * blend;
+                        }
+                    }
+                }
+            }
+            continue;
+        }
         // --- DIGGER STATE LOGIC ---
         if (lem.isDigging) {
             lem.digTimer -= dt;
@@ -954,13 +990,17 @@ export function updateLemmings(dt) {
             lem.grownUp = true;
         }
 
-        // --- CHANCE TO BECOME A DIGGER OR RAISER ---
-        if (!lem.isDigging && !lem.isRaising) {
-            if (Math.random() < 0.02 * dt) {
+        // --- CHANCE TO BECOME A DIGGER, RAISER, OR DANCER ---
+        if (!lem.isDigging && !lem.isRaising && !lem.isDancing) {
+            // Check the rest timer before spontaneously dancing
+            if (lem.danceRestTimer <= 0 && Math.random() < 0.01 * dt) { // 1% chance to start a dance
+                lem.isDancing = true;
+                lem.danceTimer = 5.0 + Math.random() * 5.0; // Dance for 5 to 10 seconds
+            } else if (Math.random() < 0.02 * dt) { // 2% chance to start digging
                 lem.isDigging = true;
                 lem.digTimer = 4.0 + Math.random() * 4.0; // Dig for 4 to 8 seconds
                 lem.digAccumulator = 0;
-            } else if (Math.random() < 0.02 * dt) {
+            } else if (Math.random() < 0.02 * dt) { // 2% chance to start raising
                 lem.isRaising = true;
                 lem.raiseTimer = 4.0 + Math.random() * 4.0; // Raise path for 4 to 8 seconds
                 lem.raiseAccumulator = 0;
@@ -1096,6 +1136,8 @@ export function updateLemmings(dt) {
                       isRaising: false,
                       raiseTimer: 0,
                       raiseAccumulator: 0,
+                      isDancing: false,
+                      danceTimer: 0,
                       grownUp: false,
                   });
               }
