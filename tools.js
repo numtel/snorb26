@@ -1063,44 +1063,46 @@ export function updateLemmings(dt) {
 
     let needsBufferRebuild = cubesAdded;
 
-    for (let cache of cubeCache) {
-        let c = cache.c;
-        if (cache.lemmingsInside >= 2) {
-            c.reproduceTimer = (c.reproduceTimer || 0) + dt;
-            if (c.reproduceTimer >= 30.0) { // Produces a new lemming every 30 seconds
-                c.reproduceTimer = 0;
-                c.h += 1.5; // Increase the cube's height
-                needsBufferRebuild = true;
+    if(appState.enableReproduction) {
+      for (let cache of cubeCache) {
+          let c = cache.c;
+          if (cache.lemmingsInside >= 2) {
+              c.reproduceTimer = (c.reproduceTimer || 0) + dt;
+              if (c.reproduceTimer >= 30.0) { // Produces a new lemming every 30 seconds
+                  c.reproduceTimer = 0;
+                  c.h += 1.5; // Increase the cube's height
+                  needsBufferRebuild = true;
 
-                // Calculate a position just outside the cube's bounds
-                const maxDim = Math.max(c.w, c.l !== undefined ? c.l : c.w);
-                const spawnRadius = (maxDim / 2) + 0.5;
-                const angle = Math.random() * Math.PI * 2;
+                  // Calculate a position just outside the cube's bounds
+                  const maxDim = Math.max(c.w, c.l !== undefined ? c.l : c.w);
+                  const spawnRadius = (maxDim / 2) + 0.5;
+                  const angle = Math.random() * Math.PI * 2;
 
-                const spawnX = clamp(c.x + Math.cos(angle) * spawnRadius, 1, GRID_W - 2);
-                const spawnY = clamp(c.y + Math.sin(angle) * spawnRadius, 1, GRID_H - 2);
+                  const spawnX = clamp(c.x + Math.cos(angle) * spawnRadius, 1, GRID_W - 2);
+                  const spawnY = clamp(c.y + Math.sin(angle) * spawnRadius, 1, GRID_H - 2);
 
-                lemmings.push({
-                    x: spawnX,
-                    y: spawnY,
-                    a: angle,
-                    s: 1.5 + Math.random() * 2.5,
-                    c: [Math.random(), Math.random(), Math.random()],
-                    hasBuilt: false,
-                    hasResource: false,
-                    resourceId: 0,
-                    isDigging: false,
-                    digTimer: 0,
-                    digAccumulator: 0,
-                    isRaising: false,
-                    raiseTimer: 0,
-                    raiseAccumulator: 0,
-                    grownUp: false,
-                });
-            }
-        } else {
-            c.reproduceTimer = 0;
-        }
+                  lemmings.push({
+                      x: spawnX,
+                      y: spawnY,
+                      a: angle,
+                      s: 1.5 + Math.random() * 2.5,
+                      c: [Math.random(), Math.random(), Math.random()],
+                      hasBuilt: false,
+                      hasResource: false,
+                      resourceId: 0,
+                      isDigging: false,
+                      digTimer: 0,
+                      digAccumulator: 0,
+                      isRaising: false,
+                      raiseTimer: 0,
+                      raiseAccumulator: 0,
+                      grownUp: false,
+                  });
+              }
+          } else {
+              c.reproduceTimer = 0;
+          }
+      }
     }
 
     if (terrainChanged) uploadElevations();

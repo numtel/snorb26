@@ -79,6 +79,7 @@ if (!loadMapFromLocal()) {
   customBuildingRegistry.forEach(url => { if(url) loadCustomTexture(url); });
 }
 uploadElevations();
+updateViewMenuUI();
 
 // --- 2. Local Storage Implementation ---
 let saveTimeout = null;
@@ -284,7 +285,7 @@ window.addEventListener('keydown', (e) => {
     closeAllMenus();
     return;
   }
-  if(document.querySelector('dialog[open]') !== null) return;
+  if(document.querySelector('dialog:not(.menu)[open]') !== null) return;
   const tool = document.querySelector(`button[data-key="${code}"]`);
   if(tool) {
     const cmd = tool.dataset.command;
@@ -388,6 +389,11 @@ function menuClicks(command, tool) {
       appState.showUnderground = !appState.showUnderground;
       updateViewMenuUI();
       break;
+    case 'toggle-reproduction':
+      appState.enableReproduction = !appState.enableReproduction;
+      console.log(appState);
+      updateViewMenuUI();
+      break;
     default:
       console.error('invalid menu item', command);
   }
@@ -449,6 +455,10 @@ export function updateViewMenuUI() {
   const ugBtn = document.querySelector('button[data-command="toggle-underground"]');
   if (ugBtn) {
     ugBtn.classList.toggle('active', appState.showUnderground);
+  }
+  const reproBtn = document.querySelector('button[data-command="toggle-reproduction"]');
+  if (reproBtn) {
+    reproBtn.classList.toggle('active', appState.enableReproduction);
   }
 }
 

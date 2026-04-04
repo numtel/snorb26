@@ -73,6 +73,7 @@ export const appState = {
   activeCubeIndex: -1,
   activeCubeHandle: -1,
   queryTarget: null,
+  enableReproduction: true,
   isPlaying: true,
   gameSpeed: 1.0,
   gameTime: 0,
@@ -191,6 +192,7 @@ export function serializeMap() {
     ['showUnderground', appState.showUnderground],
     ['isPlaying', appState.isPlaying],
     ['gameSpeed', appState.gameSpeed],
+    ['enableReproduction', appState.enableReproduction],
   ]);
 
   out += formatBlock('camera', camera, [
@@ -512,6 +514,7 @@ export function deserializeMap(text) {
 
     appState.showGrid = data.map.showGrid !== 'false';
     appState.showUnderground = data.map.showUnderground === 'true';
+    appState.enableReproduction = data.map.enableReproduction === 'true';
 
     if (data.map.isPlaying !== undefined) appState.isPlaying = data.map.isPlaying !== 'false';
     if (data.map.gameSpeed !== undefined) appState.gameSpeed = parseFloat(data.map.gameSpeed) || 1.0;
@@ -566,6 +569,7 @@ function deserializeMapJSON(data) {
 
     if (data.isPlaying !== undefined) appState.isPlaying = data.isPlaying;
     if (data.gameSpeed !== undefined) appState.gameSpeed = data.gameSpeed;
+    if (data.enableReproduction !== undefined) appState.enableReproduction = data.enableReproduction;
 
     if (data.brush) {
       brush.radius = data.brush.radius;
