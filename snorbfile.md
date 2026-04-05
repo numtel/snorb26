@@ -74,6 +74,17 @@ Defines a lemming.
 * **hasResource**: Boolean, whether it has demolished a sprite and is ready to build
 * **isDigging**: (Optional) Boolean, whether the lemming is currently digging.
 * **digTimer**: (Optional) Float, remaining time in seconds the lemming will dig.
+* **isDancing**: (Optional) Boolean, whether the lemming is currently dancing.
+* **danceTimer**: (Optional) Float, remaining time in seconds the lemming will dance.
+* **danceRestTimer**: (Optional) Float, remaining time in seconds the lemming must rest before dancing again.
+* **grownUp**: (Optional) Boolean, whether the lemming has grown up and become more likely to blaze a trail
+
+> [!CAUTION]
+> Lemmings **SHOULD** have their own free will.
+>
+> There's a reason you can't change their action properties in the query dialog.
+>
+> Changing these properties manually in your snorb file is not recommended!
 
 ---
 
