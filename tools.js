@@ -834,10 +834,10 @@ export function updateLemmings(dt) {
                             other.danceTimer = 4.0 + Math.random() * 6.0;
                         }
                         if (other.isDancing) {
-                            const blend = 0.5 * dt;
-                            lem.c[0] += (other.c[0] - lem.c[0]) * blend;
-                            lem.c[1] += (other.c[1] - lem.c[1]) * blend;
-                            lem.c[2] += (other.c[2] - lem.c[2]) * blend;
+                            const diverge = 0.5 * dt;
+                            lem.c[0] = (lem.c[0] - (other.c[0] - lem.c[0]) * diverge + 1) % 1;
+                            lem.c[1] = (lem.c[1] - (other.c[1] - lem.c[1]) * diverge + 1) % 1;
+                            lem.c[2] = (lem.c[2] - (other.c[2] - lem.c[2]) * diverge + 1) % 1;
                         }
                     }
                 }
