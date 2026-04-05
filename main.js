@@ -57,6 +57,7 @@ import {
   editCubeDrag,
   placeLemmingAt,
   queryDown,
+  getTileScreenPos,
 } from './tools.js';
 
 export const worker = new Worker('lemmingWorker.js');
@@ -90,10 +91,54 @@ worker.onmessage = (e) => {
     if (msg.terrainChanged || msg.buildingsChanged || msg.needsBufferRebuild) {
       saveMapToLocal(true);
     }
-  } else if(msg.type === 'flirtation' || msg.type === 'true_love' || msg.type === 'rejection') {
+  } else if(msg.type === 'true_love' || msg.type === 'rejection') {
     console.info(msg);
+    spawnEventEffect(msg);
   }
 };
+
+function spawnEventEffect(msg) {
+  // Convert the tile coordinates where it happened to screen space
+  const [sx, sy] = getTileScreenPos(msg.lem.x, msg.lem.y);
+
+  const container = document.createElement('div');
+  container.className = 'event-effect-container';
+  container.style.left = sx + 'px';
+  container.style.top = sy + 'px';
+
+  // Create the main text
+  const text = document.createElement('div');
+  text.className = `event-text ${msg.type}`;
+  if (msg.type === 'true_love') {
+    text.innerHTML = `💖 True Love! 💖<br>${msg.lem.id} & ${msg.other.id}`;
+  } else {
+    text.innerHTML = `💔 Rejection! 💔<br>${msg.lem.id} & ${msg.other.id}`;
+  }
+  container.appendChild(text);
+
+  // Spawn the exploding emojis
+  const emojiChar = msg.type === 'true_love' ? '💖' : '💔';
+  for (let i = 0; i < 8; i++) {
+    const emoji = document.createElement('div');
+    emoji.className = 'event-emoji';
+    emoji.textContent = emojiChar;
+
+    // Calculate a random explosion trajectory
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 40 + Math.random() * 60;
+    const tx = Math.cos(angle) * dist;
+    const ty = Math.sin(angle) * dist - 40; // Bias slightly upwards
+
+    emoji.style.setProperty('--tx', `${tx}px`);
+    emoji.style.setProperty('--ty', `${ty}px`);
+    container.appendChild(emoji);
+  }
+
+  document.body.appendChild(container);
+
+  // Clean up the DOM element after the animation finishes
+  setTimeout(() => container.remove(), 3000);
+}
 
 export function syncWorkerState() {
   currentSyncId++;

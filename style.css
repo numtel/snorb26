@@ -25,3 +25,49 @@ body.window-inactive canvas {
 input[type="range"] { width:110px; max-width:40vw; }
 input[type="text"], input[type="number"] { background:var(--face); color:var(--text); width:110px; max-width:40vw; border: 1px inset var(--etch); padding: 3px 8px; }
 
+/* --- Lemming Event Effects --- */
+.event-effect-container {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.event-text {
+  font-weight: bold;
+  font-size: 1.1rem;
+  line-height: 1.3;
+  text-shadow: 0px 2px 4px rgba(0,0,0,0.8), 0px 0px 2px rgba(0,0,0,1);
+  animation: eventFloatUp 3s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  white-space: nowrap;
+  position: relative;
+  z-index: 2;
+}
+
+.event-text.true_love { color: #ff88ff; }
+.event-text.rejection { color: #dddddd; }
+
+.event-emoji {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-size: 1.5rem;
+  transform: translate(-50%, -50%);
+  animation: eventExplode 1.5s ease-out forwards;
+  z-index: 1;
+}
+
+@keyframes eventFloatUp {
+  0% { transform: scale(0.5) translateY(0); opacity: 0; }
+  10% { transform: scale(1.2) translateY(-20px); opacity: 1; }
+  20% { transform: scale(1.0) translateY(-30px); opacity: 1; }
+  80% { transform: scale(1.0) translateY(-60px); opacity: 1; }
+  100% { transform: scale(1.0) translateY(-80px); opacity: 0; }
+}
+
+@keyframes eventExplode {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.5); opacity: 0; }
+}

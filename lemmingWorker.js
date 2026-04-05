@@ -345,7 +345,6 @@ function updateLemmings(dt) {
                 if (other !== lem && other.grownUp && !other.hasBuilt && !other.partnerId) {
                     const dSq = (lem.x - other.x)**2 + (lem.y - other.y)**2;
                     if (dSq < 2.0 && Math.random() < 0.5 * dt) { // Close enough to shoot their shot (Sen: lmfao, jezuz gemini you fira)
-                        self.postMessage({ type: 'flirtation', lem, other });
                         if (Math.random() < 0.3) { // 30% chance of lifelong partnership!
                             lem.partnerId = other.id;
                             other.partnerId = lem.id;
