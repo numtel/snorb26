@@ -786,6 +786,7 @@ export function placeLemmingAt(x, y) {
         isDancing: false,
         danceTimer: 0,
         danceRestTimer: 0,
+        danceAccumulator: 0,
         grownUp: false,
     });
 }
@@ -818,6 +819,49 @@ export function updateLemmings(dt) {
         // --- DANCER STATE LOGIC ---
         if (lem.isDancing) {
             lem.danceTimer -= dt;
+            lem.danceAccumulator = (lem.danceAccumulator || 0) + dt;
+
+            // Smooth terrain in a 5-tile radius every 0.5 seconds while dancing
+            if (lem.danceAccumulator >= 0.5) {
+                lem.danceAccumulator = 0;
+                const cx = Math.floor(lem.x), cy = Math.floor(lem.y);
+                const r = 5;
+                const strength = 0.25;
+                const affectedIndices = [];
+
+                for (let oy = -r; oy <= r; oy++) {
+                    for (let ox = -r; ox <= r; ox++) {
+                        const x = cx + ox, y = cy + oy;
+                        if (x >= 0 && y >= 0 && x < GRID_W && y < GRID_H && (ox * ox + oy * oy <= r * r)) {
+                            affectedIndices.push(y * GRID_W + x);
+                        }
+                    }
+                }
+
+                const newValues = new Map();
+                for (const i of affectedIndices) {
+                    const x = i % GRID_W, y = (i / GRID_W) | 0;
+                    let sum = 0, count = 0;
+                    const neighbors = [[0,1], [0,-1], [1,0], [-1,0]];
+                    for (const [nx, ny] of neighbors) {
+                        const tx = x + nx, ty = y + ny;
+                        if (tx >= 0 && tx < GRID_W && ty >= 0 && ty < GRID_H) {
+                            sum += elevations[ty * GRID_W + tx];
+                            count++;
+                        }
+                    }
+                    const avg = count > 0 ? sum / count : elevations[i];
+                    newValues.set(i, Math.round(elevations[i] * (1 - strength) + (avg * strength)));
+                }
+
+                for (const [idx, val] of newValues) {
+                    if (elevations[idx] !== val) {
+                        elevations[idx] = clamp(val, 0, 255);
+                        terrainChanged = true;
+                    }
+                }
+            }
+
             if (lem.danceTimer <= 0) {
                 lem.isDancing = false;
                 // Give them a 15-30 second break before they can dance again
@@ -1138,6 +1182,7 @@ export function updateLemmings(dt) {
                       raiseAccumulator: 0,
                       isDancing: false,
                       danceTimer: 0,
+                      danceAccumulator: 0,
                       grownUp: false,
                   });
               }

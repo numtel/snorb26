@@ -476,6 +476,7 @@ export function deserializeMap(text) {
           isDancing: props.isDancing === 'true',
           danceTimer: parseFloat(props.danceTimer) || 0,
           danceRestTimer: parseFloat(props.danceRestTimer) || 0,
+          danceAccumulator: 0,
           grownUp: props.grownUp === 'true',
         };
         data.lemmings.push(lem);
