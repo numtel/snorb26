@@ -975,6 +975,7 @@ function openQueryDialog() {
     if (target.type === 'lemming') {
         const l = lemmings[target.index];
         title.textContent = "Edit Lemming";
+        html += `<label class="text"><span>Partner ID:</span> <input type="text" id="q_partner" value="${l.partnerId || ''}"></label>`;
         html += `<label class="text"><span>X:</span> <input type="number" id="q_x" value="${l.x}" step="0.1"></label>`;
         html += `<label class="text"><span>Y:</span> <input type="number" id="q_y" value="${l.y}" step="0.1"></label>`;
         html += `<label class="text"><span>Angle:</span> <input type="number" id="q_a" value="${l.a}" step="0.1"></label>`;
@@ -1020,6 +1021,7 @@ document.getElementById('saveQueryBtn')?.addEventListener('click', () => {
 
     if (target.type === 'lemming') {
         const l = lemmings[target.index];
+        l.partnerId = document.getElementById('q_partner').value || null;
         l.x = parseFloat(document.getElementById('q_x').value);
         l.y = parseFloat(document.getElementById('q_y').value);
         l.a = parseFloat(document.getElementById('q_a').value);

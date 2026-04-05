@@ -41,6 +41,10 @@ function updateLemmings(dt) {
     let buildingsChanged = false;
     let terrainChanged = false;
 
+    // Build a quick dictionary so lemmings can find their partners efficiently
+    const lemmingsById = new Map();
+    for (let l of lemmings) lemmingsById.set(l.id, l);
+
     // Process Healing Shockwaves
     for (let i = shockwaves.length - 1; i >= 0; i--) {
         let sw = shockwaves[i];
@@ -324,6 +328,41 @@ function updateLemmings(dt) {
 
         if (!lem.grownUp && Math.random() < 0.001 * dt) lem.grownUp = true;
 
+        // --- NEW LOVE LOGIC ---
+        if (lem.partnerId) {
+            const partner = lemmingsById.get(lem.partnerId);
+            if (partner && !lem.isDigging && !lem.isDancing && !lem.isThinking) {
+                const dSq = (lem.x - partner.x)**2 + (lem.y - partner.y)**2;
+                // If they wander too far apart, they occasionally steer back towards their partner
+                if (dSq > 4.0 && Math.random() < 2.0 * dt) {
+                    lem.a = Math.atan2(partner.y - lem.y, partner.x - lem.x);
+                }
+            }
+        } else if (lem.grownUp && !lem.hasBuilt && !lem.isThinking) {
+            // Single and looking to mingle!
+            for (let other of lemmings) {
+                // Must be another single, grown adult who hasn't settled down yet
+                if (other !== lem && other.grownUp && !other.hasBuilt && !other.partnerId) {
+                    const dSq = (lem.x - other.x)**2 + (lem.y - other.y)**2;
+                    if (dSq < 2.0 && Math.random() < 0.5 * dt) { // Close enough to shoot their shot (Sen: lmfao, jezuz gemini you fira)
+                        if (Math.random() < 0.3) { // 30% chance of lifelong partnership!
+                            lem.partnerId = other.id;
+                            other.partnerId = lem.id;
+                            // Celebrate with a synchronized dance!
+                            lem.isDancing = true; lem.danceTimer = 6.0;
+                            other.isDancing = true; other.danceTimer = 6.0;
+                            lem.stress = 0; other.stress = 0;
+                        } else {
+                            // Rejection! Very stressful.
+                            lem.stress += 15.0;
+                            lem.a += Math.PI; // Run away in embarrassment
+                        }
+                        break; // Only try to court one lemming per tick
+                    }
+                }
+            }
+        }
+
         if (!lem.isDigging && !lem.isRaising && !lem.isDancing) {
             if (lem.danceRestTimer <= 0 && Math.random() < 0.001 * dt) {
                 lem.isDancing = true;
@@ -436,6 +475,8 @@ function updateLemmings(dt) {
                   const spawnY = clamp(c.y + Math.sin(angle) * spawnRadius, 1, GRID_H - 2);
 
                   lemmings.push({
+                      id: Math.random().toString(36).substr(2, 9),
+                      partnerId: null,
                       x: spawnX, y: spawnY, a: angle,
                       s: 1.5 + Math.random() * 2.5,
                       c: [Math.random(), Math.random(), Math.random()],

@@ -68,6 +68,8 @@ Defines an extruded 3D polyline (roads, fences, paths).
 
 ### `lemming`
 Defines a lemming.
+* **id**: String, unique identifier for the lemming.
+* **partnerId**: (Optional) String, the ID of their lifelong partner.
 * **x / y / a / s**: Position, angle, speed
 * **c**: Color as three comma-separated floats (`R, G, B`) from 0.0 to 1.0.
 * **hasBuilt**: Boolean, can only build one cube
