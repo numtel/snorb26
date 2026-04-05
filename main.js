@@ -56,9 +56,54 @@ import {
   editCubeDown,
   editCubeDrag,
   placeLemmingAt,
-  updateLemmings,
   queryDown,
 } from './tools.js';
+
+export const worker = new Worker('lemmingWorker.js');
+export let workerBusy = false;
+let currentSyncId = 0;
+
+worker.onmessage = (e) => {
+  const msg = e.data;
+  if (msg.type === 'tick_result') {
+    workerBusy = false;
+
+    // Drop stale results from before a map reset/sync
+    if (msg.syncId !== currentSyncId) return;
+
+    lemmings.length = 0;
+    lemmings.push(...msg.lemmings);
+
+    if (msg.terrainChanged) {
+      elevations.set(msg.elevations);
+      uploadElevations();
+    }
+    if (msg.buildingsChanged) {
+      buildingAt.set(msg.buildingAt);
+      rebuildBuildingInstances();
+    }
+    if (msg.needsBufferRebuild) {
+      cubes.length = 0;
+      cubes.push(...msg.cubes);
+      rebuildCubeBuffers();
+    }
+    if (msg.terrainChanged || msg.buildingsChanged || msg.needsBufferRebuild) {
+      saveMapToLocal(true);
+    }
+  }
+};
+
+export function syncWorkerState() {
+  currentSyncId++;
+  worker.postMessage({
+    type: 'sync',
+    syncId: currentSyncId,
+    GRID_W, GRID_H,
+    elevations, buildingAt, mapSettings,
+    extrusions, cubes, lemmings,
+    enableReproduction: appState.enableReproduction
+  });
+}
 
 // Setup Map & DOM Elements
 const hud = document.getElementById('hud');
@@ -80,10 +125,12 @@ if (!loadMapFromLocal()) {
 }
 uploadElevations();
 updateViewMenuUI();
+syncWorkerState();
 
 // --- 2. Local Storage Implementation ---
 let saveTimeout = null;
-export function saveMapToLocal() {
+export function saveMapToLocal(fromWorker = false) {
+  if (!fromWorker) syncWorkerState();
   if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
     const dataText = serializeMap();
@@ -829,7 +876,10 @@ function tick(now) {
   if (appState.isPlaying) {
     appState.gameTime += dtReal * appState.gameSpeed;
     const dtLemming = (dtReal / 1000) * appState.gameSpeed;
-    if (dtLemming > 0) updateLemmings(dtLemming);
+    if (dtLemming > 0 && !workerBusy) {
+        workerBusy = true;
+        worker.postMessage({ type: 'tick', dt: dtLemming });
+    }
   }
 
   const l = camera.lerpFactor;
@@ -899,7 +949,7 @@ function tick(now) {
   };
 
   draw(appState.gameTime);
-  hud.textContent = `${appState.toolMode}\nzoom: ${Math.round(camera.zoom * 100)}%, tilt: ${Math.round(camera.tilt * 100)}%, rot: ${Math.round((camera.rotation * 180 / Math.PI) % 360)}°\ntile: (${selected.x}, ${selected.y}), lemmings: ${lemmings.length}`;
+  hud.textContent = `${appState.toolMode}\nzoom: ${Math.round(camera.zoom * 100)}%, tilt: ${Math.round(camera.tilt * 100)}%, rot: ${Math.round((camera.rotation * 180 / Math.PI) % 360)}°\ntile: (${selected.x}, ${selected.y}), lemmings: ${lemmings.length}, syncId: ${currentSyncId}`;
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
