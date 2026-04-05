@@ -986,6 +986,7 @@ function openQueryDialog() {
     } else if (target.type === 'cube') {
         const c = cubes[target.index];
         title.textContent = "Edit Cube";
+        html += `<p>Lemmings Inside: <span id="q_lemming_count">${target.lemmingCount}</span></p>`;
         html += `<label class="text"><span>X:</span> <input type="number" id="q_x" value="${c.x}" step="0.1"></label>`;
         html += `<label class="text"><span>Y:</span> <input type="number" id="q_y" value="${c.y}" step="0.1"></label>`;
         html += `<label class="text"><span>Width:</span> <input type="number" id="q_w" value="${c.w}" step="0.1"></label>`;

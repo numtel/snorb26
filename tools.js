@@ -809,7 +809,13 @@ export function queryDown(tx, ty) {
     // 2. Check Cubes
     for (let i = cubes.length - 1; i >= 0; i--) {
         if (isInsideCube(tx, ty, cubes[i])) {
-            appState.queryTarget = { type: 'cube', index: i };
+            let count = 0;
+            for (let j = 0; j < lemmings.length; j++) {
+                if (isInsideCube(lemmings[j].x, lemmings[j].y, cubes[i])) {
+                    count++;
+                }
+            }
+            appState.queryTarget = { type: 'cube', index: i, lemmingCount: count };
             return appState.queryTarget;
         }
     }
