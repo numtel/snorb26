@@ -980,7 +980,9 @@ function openQueryDialog() {
         html += `<label class="text"><span>Angle:</span> <input type="number" id="q_a" value="${l.a}" step="0.1"></label>`;
         html += `<label class="text"><span>Speed:</span> <input type="number" id="q_s" value="${l.s}" step="0.1"></label>`;
         html += `<label class="text"><span>Color:</span> <input type="color" id="q_c" value="${toHex(l.c)}"></label>`;
+        html += `<label class="text"><span>Stress:</span> <input type="number" id="q_stress" value="${(l.stress || 0).toFixed(1)}" step="0.1"></label>`;
         html += `<label class="radio"><input type="checkbox" id="q_grown" ${l.grownUp?'checked':''}> Grown Up</label>`;
+        html += `<label class="radio"><input type="checkbox" id="q_thinking" ${l.isThinking?'checked':''}> Thinking</label>`;
         html += `<label class="radio"><input type="checkbox" id="q_built" ${l.hasBuilt?'checked':''}> Has Built</label>`;
         html += `<label class="radio"><input type="checkbox" id="q_resource" ${l.hasResource?'checked':''}> Has Resource</label>`;
     } else if (target.type === 'cube') {
@@ -1024,6 +1026,8 @@ document.getElementById('saveQueryBtn')?.addEventListener('click', () => {
         l.s = parseFloat(document.getElementById('q_s').value);
         l.c = fromHex(document.getElementById('q_c').value);
         l.grownUp = document.getElementById('q_grown').checked;
+        l.stress = parseFloat(document.getElementById('q_stress').value);
+        l.isThinking = document.getElementById('q_thinking').checked;
         l.hasBuilt = document.getElementById('q_built').checked;
         l.hasResource = document.getElementById('q_resource').checked;
     } else if (target.type === 'cube') {

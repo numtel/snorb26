@@ -77,6 +77,9 @@ Defines a lemming.
 * **isDancing**: (Optional) Boolean, whether the lemming is currently dancing.
 * **danceTimer**: (Optional) Float, remaining time in seconds the lemming will dance.
 * **danceRestTimer**: (Optional) Float, remaining time in seconds the lemming must rest before dancing again.
+* **stress**: (Optional) Float, how overwhelmed the lemming currently feels.
+* **isThinking**: (Optional) Boolean, whether the lemming has paused to reflect on their choices.
+* **thinkTimer**: (Optional) Float, remaining time in seconds the lemming will think before emitting a healing shockwave.
 * **grownUp**: (Optional) Boolean, whether the lemming has grown up and become more likely to blaze a trail
 
 > [!CAUTION]

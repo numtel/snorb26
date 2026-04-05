@@ -271,6 +271,13 @@ export function serializeMap() {
     if (l.danceRestTimer > 0) {
       props.push(['danceRestTimer', l.danceRestTimer.toFixed(2)]);
     }
+    if (l.isThinking) {
+      props.push(['isThinking', l.isThinking]);
+      props.push(['thinkTimer', (l.thinkTimer || 0).toFixed(2)]);
+    }
+    if (l.stress > 0) {
+      props.push(['stress', (l.stress || 0).toFixed(2)]);
+    }
     props.push(['grownUp', l.grownUp || false]);
     out += formatBlock('lemming', l, props);
   });
@@ -477,6 +484,9 @@ export function deserializeMap(text) {
           danceTimer: parseFloat(props.danceTimer) || 0,
           danceRestTimer: parseFloat(props.danceRestTimer) || 0,
           danceAccumulator: 0,
+          stress: parseFloat(props.stress) || 0,
+          isThinking: props.isThinking === 'true',
+          thinkTimer: parseFloat(props.thinkTimer) || 0,
           grownUp: props.grownUp === 'true',
         };
         data.lemmings.push(lem);

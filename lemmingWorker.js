@@ -3,6 +3,7 @@ let elevations, buildingAt, mapSettings = { waterLevel: 86 };
 let extrusions = [], cubes = [], lemmings = [];
 let enableReproduction = true;
 let currentSyncId = 0;
+let shockwaves = []; // Keep track of active healing shockwaves
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -40,6 +41,60 @@ function updateLemmings(dt) {
     let buildingsChanged = false;
     let terrainChanged = false;
 
+    // Process Healing Shockwaves
+    for (let i = shockwaves.length - 1; i >= 0; i--) {
+        let sw = shockwaves[i];
+        let oldR = sw.r;
+        sw.r += dt * sw.speed;
+
+        let cx = Math.floor(sw.x), cy = Math.floor(sw.y);
+        let rCeil = Math.ceil(sw.r);
+
+        const affectedIndices = [];
+        for (let oy = -rCeil; oy <= rCeil; oy++) {
+            for (let ox = -rCeil; ox <= rCeil; ox++) {
+                let dist = Math.hypot(ox, oy);
+                if (dist >= oldR && dist < sw.r) {
+                    let x = cx + ox, y = cy + oy;
+                    if (x >= 0 && y >= 0 && x < GRID_W && y < GRID_H) {
+                        affectedIndices.push(y * GRID_W + x);
+                    }
+                }
+            }
+        }
+
+        if (affectedIndices.length > 0) {
+            const newValues = new Map();
+            const strength = 0.6; // Shockwave smoothing strength
+            for (const idx of affectedIndices) {
+                const x = idx % GRID_W, y = (idx / GRID_W) | 0;
+                let sum = 0, count = 0;
+                // Average against all 8 neighbors for a strong smoothing effect
+                const neighbors = [[0,1], [0,-1], [1,0], [-1,0], [1,1], [-1,-1], [1,-1], [-1,1]];
+                for (const [nx, ny] of neighbors) {
+                    const tx = x + nx, ty = y + ny;
+                    if (tx >= 0 && tx < GRID_W && ty >= 0 && ty < GRID_H) {
+                        sum += elevations[ty * GRID_W + tx];
+                        count++;
+                    }
+                }
+                const avg = count > 0 ? sum / count : elevations[idx];
+                newValues.set(idx, Math.round(elevations[idx] * (1 - strength) + (avg * strength)));
+            }
+
+            for (const [idx, val] of newValues) {
+                if (elevations[idx] !== val) {
+                    elevations[idx] = clamp(val, 0, 255);
+                    terrainChanged = true;
+                }
+            }
+        }
+
+        if (sw.r >= sw.maxR) {
+            shockwaves.splice(i, 1);
+        }
+    }
+
     const cubeCache = cubes.map(c => {
         const cosR = Math.cos(c.r || 0);
         const sinR = Math.sin(c.r || 0);
@@ -54,6 +109,29 @@ function updateLemmings(dt) {
     });
 
     for (let lem of lemmings) {
+        lem.stress = Math.max(0, (lem.stress || 0) - dt * 0.2); // Naturally calm down over time
+
+        if (lem.isThinking) {
+            lem.thinkTimer -= dt;
+            if (lem.thinkTimer <= 0) {
+                lem.isThinking = false;
+                lem.stress = 0;
+                // Emit the healing shockwave!
+                shockwaves.push({ x: lem.x, y: lem.y, r: 0, maxR: 35, speed: 20 });
+            }
+            continue; // Don't move or do anything else while reflecting
+        }
+
+        // If things are getting too chaotic, sit down and think
+        if (lem.stress > 15 && Math.random() < 0.5 * dt) {
+            lem.isThinking = true;
+            lem.thinkTimer = 4.0; // Take 4 seconds to breathe
+            lem.isDigging = false;
+            lem.isRaising = false;
+            lem.isDancing = false;
+            continue;
+        }
+
         if (lem.danceRestTimer > 0) lem.danceRestTimer -= dt;
 
         if (lem.isDancing) {
@@ -125,6 +203,7 @@ function updateLemmings(dt) {
         }
 
         if (lem.isDigging) {
+            lem.stress = (lem.stress || 0) + dt * 2.0; // Digging holes is stressful work
             lem.digTimer -= dt;
             lem.digAccumulator = (lem.digAccumulator || 0) + dt;
 
@@ -235,6 +314,7 @@ function updateLemmings(dt) {
 
         if (hitObstacle || Math.abs(currentH - nextH) > 5 || nextH <= mapSettings.waterLevel) {
             lem.a += (Math.random() * Math.PI) + Math.PI / 2;
+            if (Math.abs(currentH - nextH) > 8) lem.stress = (lem.stress || 0) + 1.5; // Huge cliff! Yikes!
         } else {
             lem.x = nx;
             lem.y = ny;
@@ -271,6 +351,11 @@ function updateLemmings(dt) {
     }
 
     for (const [key, cellLemmings] of spatialGrid.entries()) {
+        if (cellLemmings.length > 3) {
+            for (let lem of cellLemmings) {
+                lem.stress = (lem.stress || 0) + dt * 3.0; // Very crowded, causing panic!
+            }
+        }
         const [cx, cy] = key.split(',').map(Number);
         const neighborKeys = [ key, (cx + 1) + ',' + cy, cx + ',' + (cy + 1), (cx + 1) + ',' + (cy + 1), (cx - 1) + ',' + (cy + 1) ];
 
@@ -358,6 +443,7 @@ function updateLemmings(dt) {
                       isDigging: false, digTimer: 0, digAccumulator: 0,
                       isRaising: false, raiseTimer: 0, raiseAccumulator: 0,
                       isDancing: false, danceTimer: 0, danceAccumulator: 0,
+                      stress: 0, isThinking: false, thinkTimer: 0,
                       grownUp: false,
                   });
               }

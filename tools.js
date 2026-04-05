@@ -787,6 +787,9 @@ export function placeLemmingAt(x, y) {
         danceTimer: 0,
         danceRestTimer: 0,
         danceAccumulator: 0,
+        stress: 0,
+        isThinking: false,
+        thinkTimer: 0,
         grownUp: false,
     });
     saveMapToLocal();
