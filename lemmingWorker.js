@@ -345,6 +345,7 @@ function updateLemmings(dt) {
                 if (other !== lem && other.grownUp && !other.hasBuilt && !other.partnerId) {
                     const dSq = (lem.x - other.x)**2 + (lem.y - other.y)**2;
                     if (dSq < 2.0 && Math.random() < 0.5 * dt) { // Close enough to shoot their shot (Sen: lmfao, jezuz gemini you fira)
+                        self.postMessage({ type: 'flirtation', lem, other });
                         if (Math.random() < 0.3) { // 30% chance of lifelong partnership!
                             lem.partnerId = other.id;
                             other.partnerId = lem.id;
@@ -352,10 +353,12 @@ function updateLemmings(dt) {
                             lem.isDancing = true; lem.danceTimer = 6.0;
                             other.isDancing = true; other.danceTimer = 6.0;
                             lem.stress = 0; other.stress = 0;
+                            self.postMessage({ type: 'true_love', lem, other });
                         } else {
                             // Rejection! Very stressful.
                             lem.stress += 15.0;
                             lem.a += Math.PI; // Run away in embarrassment
+                            self.postMessage({ type: 'rejection', lem, other });
                         }
                         break; // Only try to court one lemming per tick
                     }

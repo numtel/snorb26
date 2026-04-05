@@ -90,6 +90,8 @@ worker.onmessage = (e) => {
     if (msg.terrainChanged || msg.buildingsChanged || msg.needsBufferRebuild) {
       saveMapToLocal(true);
     }
+  } else if(msg.type === 'flirtation' || msg.type === 'true_love' || msg.type === 'rejection') {
+    console.info(msg);
   }
 };
 
