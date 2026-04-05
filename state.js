@@ -276,8 +276,8 @@ export function serializeMap() {
       props.push(['isThinking', l.isThinking]);
       props.push(['thinkTimer', (l.thinkTimer || 0).toFixed(2)]);
     }
-    if (l.partnerId) {
-      props.push(['partnerId', l.partnerId]);
+    if (l.partnerIds && l.partnerIds.length > 0) {
+      props.push(['partnerIds', l.partnerIds.join(',')]);
     }
     if (l.stress > 0) {
       props.push(['stress', (l.stress || 0).toFixed(2)]);
@@ -473,7 +473,7 @@ export function deserializeMap(text) {
       else if (type === 'lemming') {
         const lem = {
           id: props.id || Math.random().toString(36).substr(2, 9),
-          partnerId: props.partnerId || null,
+          partnerIds: props.partnerIds ? props.partnerIds.split(',') : [],
           x: parseFloat(props.x), y: parseFloat(props.y),
           a: parseFloat(props.a), s: parseFloat(props.s),
           c: props.c.split(',').map(Number),

@@ -328,26 +328,43 @@ function updateLemmings(dt) {
 
         if (!lem.grownUp && Math.random() < 0.001 * dt) lem.grownUp = true;
 
-        // --- NEW LOVE LOGIC ---
-        if (lem.partnerId) {
-            const partner = lemmingsById.get(lem.partnerId);
+        // --- POLYAMOROUS LOVE LOGIC ---
+        if (lem.partnerIds && lem.partnerIds.length > 0) {
+            // Pick a random partner to wander towards sometimes
+            const randomPartnerId = lem.partnerIds[Math.floor(Math.random() * lem.partnerIds.length)];
+            const partner = lemmingsById.get(randomPartnerId);
             if (partner && !lem.isDigging && !lem.isDancing && !lem.isThinking) {
                 const dSq = (lem.x - partner.x)**2 + (lem.y - partner.y)**2;
-                // If they wander too far apart, they occasionally steer back towards their partner
                 if (dSq > 4.0 && Math.random() < 2.0 * dt) {
                     lem.a = Math.atan2(partner.y - lem.y, partner.x - lem.x);
                 }
             }
-        } else if (lem.grownUp && !lem.hasBuilt && !lem.isThinking) {
-            // Single and looking to mingle!
+        }
+
+        // Polyamory: They can always seek out new partners if they haven't built yet
+        if (lem.grownUp && !lem.hasBuilt && !lem.isThinking) {
+            const currentPartners = lem.partnerIds ? lem.partnerIds.length : 0;
+            // The more partners they have, the MORE they seek out new ones (multiplier increases)
+            const seekChance = 0.5 * (1 + currentPartners);
+
+            // Looking to mingle!
             for (let other of lemmings) {
-                // Must be another single, grown adult who hasn't settled down yet
-                if (other !== lem && other.grownUp && !other.hasBuilt && !other.partnerId) {
+                // Must be another grown adult who hasn't settled down, and not already a partner
+                if (other !== lem && other.grownUp && !other.hasBuilt && (!lem.partnerIds || !lem.partnerIds.includes(other.id))) {
                     const dSq = (lem.x - other.x)**2 + (lem.y - other.y)**2;
-                    if (dSq < 2.0 && Math.random() < 0.5 * dt) { // Close enough to shoot their shot (Sen: lmfao, jezuz gemini you fira)
-                        if (Math.random() < 0.3) { // 30% chance of lifelong partnership!
-                            lem.partnerId = other.id;
-                            other.partnerId = lem.id;
+                    if (dSq < 2.0 && Math.random() < seekChance * dt) { // Close enough to shoot their shot (Sen: lmfao, jezuz gemini you fira)
+
+                        const otherPartners = other.partnerIds ? other.partnerIds.length : 0;
+                        // Rejection chance gets higher (acceptance gets lower) the more combined partners there are
+                        // Starts at 30% (0.3), halves for every existing partner involved
+                        const acceptanceChance = 0.3 * Math.pow(0.5, currentPartners + otherPartners);
+
+                        if (Math.random() < acceptanceChance) { // Chance of lifelong partnership!
+                            if (!lem.partnerIds) lem.partnerIds = [];
+                            if (!other.partnerIds) other.partnerIds = [];
+                            lem.partnerIds.push(other.id);
+                            other.partnerIds.push(lem.id);
+
                             // Celebrate with a synchronized dance!
                             lem.isDancing = true; lem.danceTimer = 6.0;
                             other.isDancing = true; other.danceTimer = 6.0;
@@ -478,7 +495,7 @@ function updateLemmings(dt) {
 
                   lemmings.push({
                       id: Math.random().toString(36).substr(2, 9),
-                      partnerId: null,
+                      partnerIds: [],
                       x: spawnX, y: spawnY, a: angle,
                       s: 1.5 + Math.random() * 2.5,
                       c: [Math.random(), Math.random(), Math.random()],

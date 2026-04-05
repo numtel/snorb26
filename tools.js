@@ -770,7 +770,7 @@ export function syncCubeUI(cube) {
 export function placeLemmingAt(x, y) {
     lemmings.push({
         id: Math.random().toString(36).substr(2, 9),
-        partnerId: null,
+        partnerIds: [],
         x: x + 0.5,
         y: y + 0.5,
         a: Math.random() * Math.PI * 2,           // Angle
