@@ -1037,7 +1037,7 @@ export function updateLemmings(dt) {
         // --- CHANCE TO BECOME A DIGGER, RAISER, OR DANCER ---
         if (!lem.isDigging && !lem.isRaising && !lem.isDancing) {
             // Check the rest timer before spontaneously dancing
-            if (lem.danceRestTimer <= 0 && Math.random() < 0.01 * dt) { // 1% chance to start a dance
+            if (lem.danceRestTimer <= 0 && Math.random() < 0.001 * dt) { // 0.1% chance to start a dance
                 lem.isDancing = true;
                 lem.danceTimer = 5.0 + Math.random() * 5.0; // Dance for 5 to 10 seconds
             } else if (Math.random() < 0.02 * dt) { // 2% chance to start digging
