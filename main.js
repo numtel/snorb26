@@ -424,12 +424,20 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
+function updateToolSettingsUI(tool) {
+  document.getElementById('brush-settings').classList.toggle('active', ['raise', 'lower', 'smooth', 'forest', 'demolish'].includes(tool));
+  document.getElementById('custom-build-settings').classList.toggle('active', ['custom-build', 'forest'].includes(tool));
+  document.getElementById('extrusion-settings').classList.toggle('active', ['extrude', 'edit-path'].includes(tool));
+  document.getElementById('cube-settings').classList.toggle('active', ['cube', 'edit-cube'].includes(tool));
+}
+
 function menuClicks(command, tool) {
   const moveSpeed =100 / camera.zoom;
   const zoomStep = 1.1;
   if(tool) {
     syncBrushFromUI();
     appState.toolMode = tool;
+    updateToolSettingsUI(tool);
     if (tool !== 'extrude' && tool !== 'edit-path' && appState.activeExtrusion) finishExtrusion();
     if ((tool === 'edit-path' || tool === 'extrude') && appState.activeExtrusion) {
         syncExtrusionUI(appState.activeExtrusion);
@@ -563,6 +571,7 @@ export function updateViewMenuUI() {
   const playBtn = document.querySelector('button[data-command="toggle-play"]');
   if (playBtn) playBtn.textContent = appState.isPlaying ? 'Pause' : 'Play';
 }
+updateToolSettingsUI('pan');
 
 window.addEventListener('pointerup', (e) => {
   const item = e.target.closest('.menu button[data-tool], .menu button[data-command]');

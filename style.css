@@ -15,13 +15,34 @@ body.window-inactive canvas {
   text-align:right;
 }
 
+#tools-container {
+  position: fixed; top: 0; left: 0; width: 100%; z-index: 100;
+}
+
 #tools {
-  position: fixed; top:0; left:0;
+  position: relative;
 }
 
 #tools .ctl {
   display:flex; align-items:center; justify-content:space-between; gap:6px; padding:2px 25px; margin: 3px 0;
 }
+
+#tool-settings .tool-group {
+  display: none;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 4px 10px;
+}
+
+#tool-settings .tool-group.active {
+  display: flex;
+}
+
+#tool-settings .ctl {
+  display: flex; align-items: center; gap: 6px; padding: 0; margin: 0;
+}
+
 input[type="range"] { width:110px; max-width:40vw; }
 input[type="text"], input[type="number"] { background:var(--face); color:var(--text); width:110px; max-width:40vw; border: 1px inset var(--etch); padding: 3px 8px; }
 

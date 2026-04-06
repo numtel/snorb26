@@ -10,108 +10,120 @@
 <body tabindex="-1">
   <canvas id="scene"></canvas>
   <div id="hud"></div>
-  <div id="tools" class="toolbar menubar">
-    <div class="vr"></div>
-    <div class="menu-container">
-      <button class="menu-trigger">File</button>
-      <dialog class="menu">
-        <button data-command="reset" data-key="F2">New Map...</button>
-        <div class="hr"></div>
-        <button data-command="open-file" data-key="F5">Open file...</button>
-        <button data-command="save-file" data-key="F4">Save file</button>
-        <div class="hr"></div>
-        <button data-command="exit" data-key="Delete">Exit</button>
-      </dialog>
+  <div id="tools-container">
+    <div id="tools" class="toolbar menubar">
+      <div class="vr"></div>
+      <div class="menu-container">
+        <button class="menu-trigger">File</button>
+        <dialog class="menu">
+          <button data-command="reset" data-key="F2">New Map...</button>
+          <div class="hr"></div>
+          <button data-command="open-file" data-key="F5">Open file...</button>
+          <button data-command="save-file" data-key="F4">Save file</button>
+          <div class="hr"></div>
+          <button data-command="exit" data-key="Delete">Exit</button>
+        </dialog>
+      </div>
+      <div class="menu-container">
+        <button class="menu-trigger">Map</button>
+        <dialog class="menu">
+          <label class="ctl">
+            Water Level
+            <input id="waterLevel" type="range" min="1" max="255" step="1" value="86">
+          </label>
+        </dialog>
+      </div>
+      <div class="menu-container">
+        <button class="menu-trigger">Tool</button>
+        <dialog class="menu">
+          <button data-tool="pan" class="active" data-key="1">Pan</button>
+          <button data-tool="orbit" data-key="2">Orbit</button>
+          <div class="hr"></div>
+          <button data-tool="query" data-key="Y">Query Object</button>
+          <div class="hr"></div>
+          <button data-tool="plop-lemming" data-key="P">Plop Lemming</button>
+          <div class="hr"></div>
+          <button data-tool="raise" data-key="3">Raise</button>
+          <button data-tool="lower" data-key="4">Lower</button>
+          <button data-tool="smooth" data-key="5">Smooth</button>
+          <button data-tool="forest" data-key="9">Forest</button>
+          <button data-tool="demolish" data-key="0">Demolish</button>
+          <div class="hr"></div>
+          <button data-tool="level" data-key="6">Level</button>
+          <div class="hr"></div>
+          <button data-tool="custom-build" data-key="8">Custom Build</button>
+          <div class="hr"></div>
+          <button data-tool="extrude" data-key="M">Extrude Path</button>
+          <button data-tool="edit-path" data-key="N">Edit Path</button>
+          <div class="hr"></div>
+          <button data-tool="cube" data-key="K">Place Cube</button>
+          <button data-tool="edit-cube" data-key="J">Edit Cube</button>
+          <button data-tool="remove-cube" data-key="L">Remove Cube</button>
+        </dialog>
+      </div>
+      <div class="menu-container">
+        <button class="menu-trigger">Game</button>
+        <dialog class="menu">
+          <button data-command="toggle-play" data-key="Space">Pause</button>
+          <label class="ctl">Speed <input id="gameSpeed" type="range" min="0.1" max="5.0" step="0.1" value="1.0"></label>
+          <div class="hr"></div>
+          <button data-command="toggle-reproduction" data-key="I">Reproduction</button>
+        </dialog>
+      </div>
+      <div class="menu-container">
+        <button class="menu-trigger">View</button>
+        <dialog class="menu">
+          <button data-command="pan-up" data-key="W">Pan Up</button>
+          <button data-command="pan-down" data-key="S">Pan Down</button>
+          <button data-command="pan-left" data-key="A">Pan Left</button>
+          <button data-command="pan-right" data-key="D">Pan Right</button>
+          <button data-command="center-view" data-key="C">Center Map</button>
+          <button data-command="center-selection" data-key="V">Center Selected</button>
+          <div class="hr"></div>
+          <button data-command="zoom-in" data-key="Z">Zoom In</button>
+          <button data-command="zoom-out" data-key="X">Zoom Out</button>
+          <div class="hr"></div>
+          <button data-command="rotate-left" data-key="Q">Rotate Left</button>
+          <button data-command="rotate-right" data-key="E">Rotate Right</button>
+          <div class="hr"></div>
+          <button data-command="tilt-up" data-key="R">Tilt Up</button>
+          <button data-command="tilt-down" data-key="F">Tilt Down</button>
+          <div class="hr"></div>
+          <button data-command="toggle-grid" data-key="G">Show Grid</button>
+          <button data-command="toggle-underground" data-key="U">Underground</button>
+        </dialog>
+      </div>
+      <div class="menu-container">
+        <button class="menu-trigger">Help</button>
+        <dialog class="menu">
+          <button data-command="show-help" data-key="F1">Help Topics...</button>
+          <button data-command="open-reddit">Snorb on Reddit...</button>
+          <div class="hr"></div>
+          <button data-command="show-about">About Snorb...</button>
+        </dialog>
+      </div>
     </div>
-    <div class="menu-container">
-      <button class="menu-trigger">Map</button>
-      <dialog class="menu">
-        <label class="ctl">
-          Water Level
-          <input id="waterLevel" type="range" min="1" max="255" step="1" value="86">
-        </label>
-      </dialog>
-    </div>
-    <div class="menu-container">
-      <button class="menu-trigger">Tool</button>
-      <dialog class="menu">
-        <button data-tool="pan" class="active" data-key="1">Pan</button>
-        <button data-tool="orbit" data-key="2">Orbit</button>
-        <div class="hr"></div>
-        <button data-tool="query" data-key="Y">Query Object</button>
-        <div class="hr"></div>
-        <button data-tool="plop-lemming" data-key="P">Plop Lemming</button>
-        <div class="hr"></div>
-        <button data-tool="raise" data-key="3">Raise</button>
-        <button data-tool="lower" data-key="4">Lower</button>
-        <button data-tool="smooth" data-key="5">Smooth</button>
-        <button data-tool="forest" data-key="9">Forest</button>
-        <button data-tool="demolish" data-key="0">Demolish</button>
+    <div id="tool-settings" class="toolbar">
+      <div id="brush-settings" class="tool-group">
         <label class="ctl">Size <input id="brushSize" type="range" min="1" max="8" step="1" value="2"></label>
         <label class="ctl">Smooth <input id="brushSmooth" type="range" min="0" max="1" step="0.05" value="0.25"></label>
-        <div class="hr"></div>
-        <button data-tool="level" data-key="6">Level</button>
-        <div class="hr"></div>
-        <button data-tool="custom-build" data-key="8">Custom Build</button>
+      </div>
+      <div id="custom-build-settings" class="tool-group">
         <label class="ctl">URL <input id="customUrl" type="text" placeholder="https://..." value="assets/redwood.png,assets/tree1.png,assets/tree2.png,assets/tree3.png"></label>
-        <div class="hr"></div>
-        <button data-tool="extrude" data-key="M">Extrude Path</button>
-        <button data-tool="edit-path" data-key="N">Edit Path</button>
+      </div>
+      <div id="extrusion-settings" class="tool-group">
         <label class="ctl">Width <input id="exWidth" type="range" min="0.1" max="30" step="0.1" value="0.5"></label>
         <label class="ctl">Height <input id="exHeight" type="range" min="0" max="100" step="0.5" value="2.0"></label>
         <label class="ctl">Altitude <input id="exAltitude" type="range" min="-100" max="100" step="0.1" value="0.0"></label>
         <label class="ctl">Color <input id="exColor" type="color" value="#808080"></label>
-        <div class="hr"></div>
-        <button data-tool="cube" data-key="K">Place Cube</button>
-        <button data-tool="edit-cube" data-key="J">Edit Cube</button>
-        <button data-tool="remove-cube" data-key="L">Remove Cube</button>
+      </div>
+      <div id="cube-settings" class="tool-group">
         <label class="ctl">Width <input id="cbWidth" type="range" min="1" max="100" step="1" value="4"></label>
         <label class="ctl">Length <input id="cbLength" type="range" min="1" max="100" step="1" value="4"></label>
         <label class="ctl">Height <input id="cbHeight" type="range" min="1" max="100" step="1" value="10"></label>
         <label class="ctl">Rotation <input id="cbRotation" type="range" min="0" max="6.28" step="0.05" value="0"></label>
         <label class="ctl">Color <input id="cbColor" type="color" value="#ff4444"></label>
-      </dialog>
-    </div>
-    <div class="menu-container">
-      <button class="menu-trigger">Game</button>
-      <dialog class="menu">
-        <button data-command="toggle-play" data-key="Space">Pause</button>
-        <label class="ctl">Speed <input id="gameSpeed" type="range" min="0.1" max="5.0" step="0.1" value="1.0"></label>
-        <div class="hr"></div>
-        <button data-command="toggle-reproduction" data-key="I">Reproduction</button>
-      </dialog>
-    </div>
-    <div class="menu-container">
-      <button class="menu-trigger">View</button>
-      <dialog class="menu">
-        <button data-command="pan-up" data-key="W">Pan Up</button>
-        <button data-command="pan-down" data-key="S">Pan Down</button>
-        <button data-command="pan-left" data-key="A">Pan Left</button>
-        <button data-command="pan-right" data-key="D">Pan Right</button>
-        <button data-command="center-view" data-key="C">Center Map</button>
-        <button data-command="center-selection" data-key="V">Center Selected</button>
-        <div class="hr"></div>
-        <button data-command="zoom-in" data-key="Z">Zoom In</button>
-        <button data-command="zoom-out" data-key="X">Zoom Out</button>
-        <div class="hr"></div>
-        <button data-command="rotate-left" data-key="Q">Rotate Left</button>
-        <button data-command="rotate-right" data-key="E">Rotate Right</button>
-        <div class="hr"></div>
-        <button data-command="tilt-up" data-key="R">Tilt Up</button>
-        <button data-command="tilt-down" data-key="F">Tilt Down</button>
-        <div class="hr"></div>
-        <button data-command="toggle-grid" data-key="G">Show Grid</button>
-        <button data-command="toggle-underground" data-key="U">Underground</button>
-      </dialog>
-    </div>
-    <div class="menu-container">
-      <button class="menu-trigger">Help</button>
-      <dialog class="menu">
-        <button data-command="show-help" data-key="F1">Help Topics...</button>
-        <button data-command="open-reddit">Snorb on Reddit...</button>
-        <div class="hr"></div>
-        <button data-command="show-about">About Snorb...</button>
-      </dialog>
+      </div>
     </div>
   </div>
 
