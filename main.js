@@ -587,6 +587,7 @@ export function updateViewMenuUI() {
   if (playBtn) playBtn.textContent = appState.isPlaying ? 'Pause' : 'Play';
 
   const updateVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  updateVal('gameSpeed', appState.gameSpeed);
   updateVal('setLoveChance', appState.loveChance);
   updateVal('setAgeGapPenalty', appState.ageGapPenalty);
   updateVal('setBabyChance', appState.babyChance);
