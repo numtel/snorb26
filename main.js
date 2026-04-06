@@ -269,6 +269,7 @@ camera.panY = 0;
 let lastMoveTime = 0;
 let velocityX = 0;
 let velocityY = 0;
+let preOrbitSelection = null;
 const friction = 0.92; // Controls how quickly the map stops sliding
 
 function resize() {
@@ -392,16 +393,100 @@ toolsElement.addEventListener('pointerover', (e) => {
   }
 });
 
+function shiftMenu(direction) {
+  const triggers = Array.from(document.querySelectorAll('.menu-trigger'));
+  const currentTrigger = activeMenu.parentElement.querySelector('.menu-trigger');
+  let newIndex = (triggers.indexOf(currentTrigger) + direction + triggers.length) % triggers.length;
+  
+  const nextTrigger = triggers[newIndex];
+  openMenu(nextTrigger);
+  
+  // Logic to focus the first valid item in the new menu
+  const firstItem = activeMenu.querySelector('button, input');
+  if (firstItem) firstItem.focus();
+}
+
 window.addEventListener('keydown', (e) => {
-  if (e.repeat) return;
   const code = e.code.replace(/(Digit|Key)/, '');
   if(code === 'Escape') {
     closeAllMenus();
     return;
   }
   if(document.querySelector('dialog:not(.menu)[open]') !== null) return;
-  const tool = document.querySelector(`button[data-key="${code}"]`);
+
+  // 1. Handle Alt + Key shortcuts
+  if (e.altKey) {
+    e.preventDefault();
+    const char = e.key.toLowerCase();
+
+    // Map of Alt+Key to menu index or trigger
+    const mnemonicMap = {
+      'f': 0, // File
+      'm': 1, // Map
+      't': 2, // Tool
+      'g': 3, // Game
+      'v': 4, // View
+      'h': 5  // Help
+    };
+
+    if (mnemonicMap[char] !== undefined) {
+      const triggers = document.querySelectorAll('.menu-trigger');
+      openMenu(triggers[mnemonicMap[char]]);
+      // Focus the first button in the newly opened menu
+      activeMenu.querySelector('button')?.focus();
+      return;
+    }
+  }
+
+  let tool, continuous = true;
+  // 2. Navigation when a menu is already open
+  // If a menu is open, handle navigation
+  if (activeMenu) {
+    // Select all buttons and inputs, but ignore the hidden range inputs' parent labels
+    const items = Array.from(activeMenu.querySelectorAll('button, input'));
+    const currentIndex = items.indexOf(document.activeElement);
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextIndex = (currentIndex + 1) % items.length;
+      items[nextIndex].focus();
+    }
+    else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevIndex = (currentIndex - 1 + items.length) % items.length;
+      items[prevIndex].focus();
+    }
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      // Logic to switch between File, Map, Tool menus
+      const direction = e.key === 'ArrowRight' ? 1 : -1;
+      const triggers = Array.from(document.querySelectorAll('.menu-trigger'));
+      const currentTrigger = activeMenu.parentElement.querySelector('.menu-trigger');
+      const nextIdx = (triggers.indexOf(currentTrigger) + direction + triggers.length) % triggers.length;
+
+      openMenu(triggers[nextIdx]);
+      // Auto-focus the first item in the new menu
+      const nextItems = activeMenu.querySelectorAll('button, input');
+      if (nextItems.length) nextItems[0].focus();
+    }
+    else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      tool = activeMenu.querySelector('button:hover');
+      if(!tool) tool = activeMenu.querySelector('button:focus');
+      continuous = false;
+    }
+    else if (e.key === 'Escape') {
+      closeAllMenus();
+      canvas.focus();
+    }
+    if(!tool) return; // Block game shortcuts while menu is navigated
+    if(tool) closeAllMenus();
+  }
+
+  if(!tool) tool = document.querySelector(`button[data-key="${code}"]`);
+
   if(tool) {
+    if (e.repeat) return;
     const cmd = tool.dataset.command;
     const toolMode = tool.dataset.tool;
 
@@ -411,8 +496,11 @@ window.addEventListener('keydown', (e) => {
     }
     // 2. Handle Commands (e.g., 'G' for grid, 'Arrows' for pan)
     else if (cmd) {
-      if (continuousCommands.includes(cmd)) {
+      if (continuous && continuousCommands.includes(cmd)) {
         if (['rotate-left', 'rotate-right', 'tilt-up', 'tilt-down'].includes(cmd)) {
+          if (!preOrbitSelection && selected.has) {
+            preOrbitSelection = { x: selected.x, y: selected.y };
+          }
           if(!orbitPivot) {
             requestPick(canvas.width * 0.5, canvas.height * 0.5, (selected) => {
               if(selected.has) {
@@ -427,6 +515,43 @@ window.addEventListener('keydown', (e) => {
         menuClicks(cmd, null);
       }
     }
+  } else {
+    if(selected.has) {
+      let moved = false;
+      
+      if(e.key === 'ArrowDown' && selected.y < GRID_H - 1) {
+        selected.y++; moved = true;
+      }
+      else if(e.key === 'ArrowUp' && selected.y > 0) {
+        selected.y--; moved = true;
+      }
+      else if(e.key === 'ArrowLeft' && selected.x > 0) {
+        selected.x--; moved = true;
+      }
+      else if(e.key === 'ArrowRight' && selected.x < GRID_W - 1) {
+        selected.x++; moved = true;
+      }
+      else if(e.key === 'Enter') {
+        e.preventDefault();
+        performTool();
+        return;
+      }
+
+      if (moved) {
+        // 1. Manually update the flat array index ID
+        selected.id = selected.y * GRID_W + selected.x;
+
+        // 2. Get the screen position of the newly selected tile
+        const [sx, sy] = getTileScreenPos(selected.x, selected.y);
+
+        // 3. Convert screen (CSS) pixels to Canvas resolution pixels (WebGL space)
+        const canvasSx = sx * (canvas.width / window.innerWidth);
+        const canvasSy = sy * (canvas.height / window.innerHeight);
+
+        // 4. Force a picking update at that coordinate
+        requestPick(canvasSx, canvasSy);
+      }
+    }
   }
 });
 
@@ -435,6 +560,25 @@ window.addEventListener('keyup', (e) => {
   const tool = document.querySelector(`button[data-key="${code}"]`);
   if (tool && tool.dataset.command) {
     activeCommands.delete(tool.dataset.command);
+
+    // Check if any orbit keys are still being held
+    const orbitKeysStillHeld = [...activeCommands].some(cmd =>
+      ['rotate-left', 'rotate-right', 'tilt-up', 'tilt-down'].includes(cmd)
+    );
+
+    if (!orbitKeysStillHeld && preOrbitSelection) {
+      // Restore the coordinates
+      selected.x = preOrbitSelection.x;
+      selected.y = preOrbitSelection.y;
+      selected.id = selected.y * GRID_W + selected.x;
+      selected.has = true;
+
+      // Force a pick update so the UI/GPU knows the selection moved back
+      const [sx, sy] = getTileScreenPos(selected.x, selected.y);
+      requestPick(sx * (canvas.width / window.innerWidth), sy * (canvas.height / window.innerHeight));
+
+      preOrbitSelection = null; // Clear the cache
+    }
   }
 });
 
@@ -513,7 +657,6 @@ function menuClicks(command, tool) {
       break;
     case 'toggle-reproduction':
       appState.enableReproduction = !appState.enableReproduction;
-      console.log(appState);
       updateViewMenuUI();
       break;
     default:
@@ -521,6 +664,20 @@ function menuClicks(command, tool) {
   }
   saveMapToLocal();
 }
+
+const rangeInputs = document.querySelectorAll('#newMapDialog input[type="range"]');
+const mapForm = document.querySelector('#newMapDialog form');
+
+rangeInputs.forEach(input => {
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // Prevent default browser behavior
+      // Manually trigger the submit button's click
+      // or call the form's submit handler directly
+      document.getElementById('generateMapBtn').click();
+    }
+  });
+});
 
 document.getElementById('generateMapBtn')?.addEventListener('click', () => {
   const nextW = parseInt(document.getElementById('newWidth').value, 10) || 256;
@@ -728,74 +885,7 @@ canvas.addEventListener("pointerdown", (e) => {
 
   requestPick(sx, sy, () => {
     if (!selected.has) return;
-
-    if (appState.toolMode === 'build') {
-      placeBuildingAtSelected();
-    } else if (appState.toolMode === 'demolish') {
-      paintStroke.active = true;
-      paintStroke.pointerId = e.pointerId;
-      removeBuildingAtSelected(selected.x, selected.y);
-      paintStroke.lastX = selected.x;
-      paintStroke.lastY = selected.y;
-    } else if (appState.toolMode === 'custom-build') {
-      const rawInput = document.getElementById('customUrl').value;
-      if (rawInput.trim()) {
-        placeCustomBuildingAtSelected(rawInput);
-      } else {
-        alert("Please enter one or more custom HTTPS URLs (comma separated).");
-      }
-    } else if (appState.toolMode === 'forest') {
-      paintStroke.active = true;
-      paintStroke.pointerId = e.pointerId;
-      const rawInput = document.getElementById('customUrl').value;
-      if (rawInput.trim()) {
-        brushForest(selected.x, selected.y, rawInput);
-        paintStroke.lastX = selected.x;
-        paintStroke.lastY = selected.y;
-      }
-    } else if (appState.toolMode === 'raise' || appState.toolMode === 'lower') {
-      paintStroke.active = true;
-      paintStroke.pointerId = e.pointerId;
-      paintStroke.delta = appState.toolMode === 'raise' ? +1 : -1;
-      brushApplyDelta(selected.x, selected.y, paintStroke.delta);
-      paintStroke.lastX = selected.x; paintStroke.lastY = selected.y;
-    } else if (appState.toolMode === 'smooth') {
-      paintStroke.active = true;
-      paintStroke.pointerId = e.pointerId;
-      // We use a delta of 0 or a special flag to signify smoothing
-      paintStroke.delta = 0;
-      brushSmoothTouched(selected.x, selected.y);
-      paintStroke.lastX = selected.x;
-      paintStroke.lastY = selected.y;
-    } else if (appState.toolMode === 'level') {
-      levelSel.active = true;
-      levelSel.pointerId = e.pointerId;
-      levelSel.startX = levelSel.endX = selected.x;
-      levelSel.startY = levelSel.endY = selected.y;
-      levelSel.base = elevations[selected.id];
-    } else if (appState.toolMode === 'extrude') {
-      appendExtrusionPoint(selected.x, selected.y);
-    } else if (appState.toolMode === 'edit-path') {
-      // Begin Edit Action Sequence
-      editPathDown(selected.x, selected.y, 0);
-      paintStroke.active = true; // Use paint stroke to hijack dragging
-      paintStroke.pointerId = e.pointerId;
-      paintStroke.lastX = selected.x;
-      paintStroke.lastY = selected.y;
-    } else if (appState.toolMode === 'cube') {
-      placeCubeAt(selected.x, selected.y);
-    } else if (appState.toolMode === 'edit-cube') {
-      editCubeDown(selected.x, selected.y, e.button);
-      paintStroke.active = true;
-      paintStroke.pointerId = e.pointerId;
-    } else if (appState.toolMode === 'remove-cube') {
-      removeCubeAt(selected.x, selected.y);
-    } else if (appState.toolMode === 'plop-lemming') {
-      placeLemmingAt(selected.x, selected.y);
-    } else if (appState.toolMode === 'query') {
-      const target = queryDown(selected.x, selected.y);
-      if (target) openQueryDialog();
-    }
+    performTool(e);
   });
 
   if (pointers.size === 1) {
@@ -819,6 +909,89 @@ canvas.addEventListener("pointerdown", (e) => {
     pinchAnchorWorld = screenToWorld((pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2, canvas.width, canvas.height);
   }
 });
+
+function performTool(e) {
+  // If called by keyboard (Enter), 'e' will be undefined.
+  const hasPointer = e && e.pointerId !== undefined;
+
+  if (appState.toolMode === 'build') {
+    placeBuildingAtSelected();
+  } else if (appState.toolMode === 'demolish') {
+    if (hasPointer) {
+      paintStroke.active = true;
+      paintStroke.pointerId = e.pointerId;
+    }
+    removeBuildingAtSelected(selected.x, selected.y);
+    paintStroke.lastX = selected.x;
+    paintStroke.lastY = selected.y;
+  } else if (appState.toolMode === 'custom-build') {
+    const rawInput = document.getElementById('customUrl').value;
+    if (rawInput.trim()) {
+      placeCustomBuildingAtSelected(rawInput);
+    } else {
+      alert("Please enter one or more custom HTTPS URLs (comma separated).");
+    }
+  } else if (appState.toolMode === 'forest') {
+    if (hasPointer) {
+      paintStroke.active = true;
+      paintStroke.pointerId = e.pointerId;
+    }
+    const rawInput = document.getElementById('customUrl').value;
+    if (rawInput.trim()) {
+      brushForest(selected.x, selected.y, rawInput);
+      paintStroke.lastX = selected.x;
+      paintStroke.lastY = selected.y;
+    }
+  } else if (appState.toolMode === 'raise' || appState.toolMode === 'lower') {
+    if (hasPointer) {
+      paintStroke.active = true;
+      paintStroke.pointerId = e.pointerId;
+    }
+    paintStroke.delta = appState.toolMode === 'raise' ? +1 : -1;
+    brushApplyDelta(selected.x, selected.y, paintStroke.delta);
+    paintStroke.lastX = selected.x; paintStroke.lastY = selected.y;
+  } else if (appState.toolMode === 'smooth') {
+    if (hasPointer) {
+      paintStroke.active = true;
+      paintStroke.pointerId = e.pointerId;
+    }
+    // We use a delta of 0 or a special flag to signify smoothing
+    paintStroke.delta = 0;
+    brushSmoothTouched(selected.x, selected.y);
+    paintStroke.lastX = selected.x;
+    paintStroke.lastY = selected.y;
+  } else if (appState.toolMode === 'level') {
+    if(hasPointer) {
+      levelSel.active = true;
+      levelSel.pointerId = e.pointerId;
+    }
+    levelSel.startX = levelSel.endX = selected.x;
+    levelSel.startY = levelSel.endY = selected.y;
+    levelSel.base = elevations[selected.id];
+  } else if (appState.toolMode === 'extrude') {
+    appendExtrusionPoint(selected.x, selected.y);
+  } else if (appState.toolMode === 'edit-path') {
+    // Begin Edit Action Sequence
+    editPathDown(selected.x, selected.y, 0);
+    paintStroke.active = true; // Use paint stroke to hijack dragging
+    paintStroke.pointerId = e.pointerId;
+    paintStroke.lastX = selected.x;
+    paintStroke.lastY = selected.y;
+  } else if (appState.toolMode === 'cube') {
+    placeCubeAt(selected.x, selected.y);
+  } else if (appState.toolMode === 'edit-cube') {
+    editCubeDown(selected.x, selected.y, e.button);
+    paintStroke.active = true;
+    paintStroke.pointerId = e.pointerId;
+  } else if (appState.toolMode === 'remove-cube') {
+    removeCubeAt(selected.x, selected.y);
+  } else if (appState.toolMode === 'plop-lemming') {
+    placeLemmingAt(selected.x, selected.y);
+  } else if (appState.toolMode === 'query') {
+    const target = queryDown(selected.x, selected.y);
+    if (target) openQueryDialog();
+  }
+}
 
 canvas.addEventListener("pointermove", (e) => {
   const sx = e.clientX * (canvas.width / innerWidth), sy = e.clientY * (canvas.height / innerHeight);
