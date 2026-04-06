@@ -64,7 +64,7 @@ export const paintStroke = {
 };
 
 export const brush = { radius: 2, smooth: 0.25 };
-export const appState = {
+const defaultAppState = {
   toolMode: 'pan',
   showGrid: false,
   showUnderground: false,
@@ -77,7 +77,15 @@ export const appState = {
   isPlaying: true,
   gameSpeed: 1.0,
   gameTime: 0,
-};
+  loveChance: 0.3,
+  ageGapPenalty: 0.01,
+  babyChance: 0.2,
+  babyCooldown: 60.0,
+  maxBirthAge: 50.0,
+  deathAge: 60.0,
+  deathChance: 0.0001,
+}
+export const appState = Object.assign({}, defaultAppState);
 
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -193,6 +201,13 @@ export function serializeMap() {
     ['isPlaying', appState.isPlaying],
     ['gameSpeed', appState.gameSpeed],
     ['enableReproduction', appState.enableReproduction],
+    ['loveChance', appState.loveChance],
+    ['ageGapPenalty', appState.ageGapPenalty],
+    ['babyChance', appState.babyChance],
+    ['babyCooldown', appState.babyCooldown],
+    ['maxBirthAge', appState.maxBirthAge],
+    ['deathAge', appState.deathAge],
+    ['deathChance', appState.deathChance],
   ]);
 
   out += formatBlock('camera', camera, [
@@ -311,12 +326,6 @@ export function serializeMap() {
 
 export function deserializeMap(text) {
   if (!text || typeof text !== 'string') return false;
-
-  if (text.trim().startsWith('{')) {
-      try {
-          return deserializeMapJSON(JSON.parse(text));
-      } catch(e) { return false; }
-  }
 
   try {
     const parts = text.split('__DATA__');
@@ -552,6 +561,13 @@ export function deserializeMap(text) {
 
     if (data.map.isPlaying !== undefined) appState.isPlaying = data.map.isPlaying !== 'false';
     if (data.map.gameSpeed !== undefined) appState.gameSpeed = parseFloat(data.map.gameSpeed) || 1.0;
+    if (data.map.loveChance !== undefined) appState.loveChance = parseFloat(data.map.loveChance);
+    if (data.map.ageGapPenalty !== undefined) appState.ageGapPenalty = parseFloat(data.map.ageGapPenalty);
+    if (data.map.babyChance !== undefined) appState.babyChance = parseFloat(data.map.babyChance);
+    if (data.map.babyCooldown !== undefined) appState.babyCooldown = parseFloat(data.map.babyCooldown);
+    if (data.map.maxBirthAge !== undefined) appState.maxBirthAge = parseFloat(data.map.maxBirthAge);
+    if (data.map.deathAge !== undefined) appState.deathAge = parseFloat(data.map.deathAge);
+    if (data.map.deathChance !== undefined) appState.deathChance = parseFloat(data.map.deathChance);
 
     if (data.brush.radius) {
       brush.radius = parseInt(data.brush.radius);
@@ -569,58 +585,6 @@ export function deserializeMap(text) {
   }
 }
 
-// Backward Compatibility for loading older maps
-function deserializeMapJSON(data) {
-  if (!data || !data.elevations) return false;
-  try {
-    resizeMapState(data.grid.w, data.grid.h);
-    elevations.set(data.elevations);
-    buildingAt.set(data.buildingAt);
-
-    if (data.customBuildingRegistry) {
-       customBuildingRegistry.length = 0;
-       customBuildingRegistry.push(...data.customBuildingRegistry);
-       customBuildingRegistry.forEach(url => loadCustomTexture(url));
-    }
-
-    if (data.extrusions) { extrusions.length = 0; extrusions.push(...data.extrusions); }
-    if (data.cubes) { cubes.length = 0; cubes.push(...data.cubes); }
-
-    if (data.camera) {
-      camera.panX = camera.targetPanX = data.camera.panX;
-      camera.panY = camera.targetPanY = data.camera.panY;
-      camera.zoom = camera.targetZoom = data.camera.zoom;
-      camera.tilt = camera.targetTilt = data.camera.tilt !== undefined ? data.camera.tilt : 1.0;
-      camera.rotation = camera.targetRotation = data.camera.rotation || 0;
-    }
-
-    mapSettings.waterLevel = data.waterLevel || 86;
-    const wEl = document.getElementById('waterLevel');
-    if (wEl) wEl.value = mapSettings.waterLevel;
-
-    if (data.showGrid !== undefined) appState.showGrid = data.showGrid;
-    if (data.showUnderground !== undefined) appState.showUnderground = data.showUnderground;
-
-    if (data.isPlaying !== undefined) appState.isPlaying = data.isPlaying;
-    if (data.gameSpeed !== undefined) appState.gameSpeed = data.gameSpeed;
-    if (data.enableReproduction !== undefined) appState.enableReproduction = data.enableReproduction;
-
-    if (data.brush) {
-      brush.radius = data.brush.radius;
-      brush.smooth = data.brush.smooth;
-      const rEl = document.getElementById('brushSize');
-      const sEl = document.getElementById('brushSmooth');
-      if (rEl) rEl.value = brush.radius;
-      if (sEl) sEl.value = brush.smooth;
-    }
-
-    return true;
-  } catch (e) {
-    console.error("Failed to parse map data JSON", e);
-    return false;
-  }
-}
-
 export function resizeMapState(width, height) {
   GRID_W = width;
   GRID_H = height;
@@ -629,6 +593,6 @@ export function resizeMapState(width, height) {
   extrusions.length = 0;
   cubes.length = 0;
   lemmings.length = 0;
-  appState.activeExtrusion = null;
+  Object.assign(appState, defaultAppState);
 }
 

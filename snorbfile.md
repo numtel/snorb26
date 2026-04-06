@@ -28,6 +28,13 @@ Defines the global environment and grid dimensions.
 * **waterLevel**: 0-255. Determines the elevation at which the water plane renders.
 * **showGrid**: `true` or `false`.
 * **showUnderground**: `true` or `false`.
+* **loveChance**: Base probability (0.0 to 1.0) of falling in love.
+* **ageGapPenalty**: Reduction in love chance per year of age difference.
+* **babyChance**: Probability of having a baby per tick when ready.
+* **babyCooldown**: Time in seconds before having another baby.
+* **maxBirthAge**: Maximum age a lemming can reproduce.
+* **deathAge**: Age at which death becomes possible.
+* **deathChance**: Base multiplier for the chance of death per tick above the death age.
 
 ### `camera`
 Stores the viewport state.

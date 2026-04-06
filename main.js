@@ -159,7 +159,16 @@ export function syncWorkerState() {
     GRID_W, GRID_H,
     elevations, buildingAt, mapSettings,
     extrusions, cubes, lemmings,
-    enableReproduction: appState.enableReproduction
+    enableReproduction: appState.enableReproduction,
+    simParams: {
+      loveChance: appState.loveChance,
+      ageGapPenalty: appState.ageGapPenalty,
+      babyChance: appState.babyChance,
+      babyCooldown: appState.babyCooldown,
+      maxBirthAge: appState.maxBirthAge,
+      deathAge: appState.deathAge,
+      deathChance: appState.deathChance
+    },
   });
 }
 
@@ -550,6 +559,7 @@ document.getElementById('generateMapBtn')?.addEventListener('click', () => {
   rebuildBuildingInstances();
   rebuildExtrusionBuffers();
   rebuildCubeBuffers();
+  updateViewMenuUI();
   saveMapToLocal();
 
   document.getElementById('newMapDialog').close();
@@ -575,6 +585,15 @@ export function updateViewMenuUI() {
   }
   const playBtn = document.querySelector('button[data-command="toggle-play"]');
   if (playBtn) playBtn.textContent = appState.isPlaying ? 'Pause' : 'Play';
+
+  const updateVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  updateVal('setLoveChance', appState.loveChance);
+  updateVal('setAgeGapPenalty', appState.ageGapPenalty);
+  updateVal('setBabyChance', appState.babyChance);
+  updateVal('setBabyCooldown', appState.babyCooldown);
+  updateVal('setMaxBirthAge', appState.maxBirthAge);
+  updateVal('setDeathAge', appState.deathAge);
+  updateVal('setDeathChance', appState.deathChance);
 }
 updateToolSettingsUI('pan');
 
@@ -621,6 +640,13 @@ Object.entries({
     cubeSettings.color = [ parseInt(hex.substr(1,2), 16)/255, parseInt(hex.substr(3,2), 16)/255, parseInt(hex.substr(5,2), 16)/255 ];
   },
   gameSpeed: e => appState.gameSpeed = parseFloat(e.target.value),
+  setLoveChance: e => appState.loveChance = parseFloat(e.target.value),
+  setAgeGapPenalty: e => appState.ageGapPenalty = parseFloat(e.target.value),
+  setBabyChance: e => appState.babyChance = parseFloat(e.target.value),
+  setBabyCooldown: e => appState.babyCooldown = parseFloat(e.target.value),
+  setMaxBirthAge: e => appState.maxBirthAge = parseFloat(e.target.value),
+  setDeathAge: e => appState.deathAge = parseFloat(e.target.value),
+  setDeathChance: e => appState.deathChance = parseFloat(e.target.value),
 }).forEach((entry) => {
   const el = document.getElementById(entry[0])
   entry[1]({ target: el });

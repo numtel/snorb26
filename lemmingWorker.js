@@ -2,6 +2,7 @@ let GRID_W = 256, GRID_H = 256;
 let elevations, buildingAt, mapSettings = { waterLevel: 86 };
 let extrusions = [], cubes = [], lemmings = [];
 let enableReproduction = true;
+let simParams = { loveChance: 0.3, ageGapPenalty: 0.01, babyChance: 0.2, babyCooldown: 60.0, maxBirthAge: 50.0, deathAge: 60.0, deathChance: 0.0001 };
 let currentSyncId = 0;
 let shockwaves = []; // Keep track of active healing shockwaves
 
@@ -28,6 +29,7 @@ self.onmessage = function(e) {
         cubes = e.data.cubes;
         lemmings = e.data.lemmings;
         enableReproduction = e.data.enableReproduction;
+        if (e.data.simParams) simParams = e.data.simParams;
     } else if (e.data.type === 'tick') {
         if (!lemmings || lemmings.length === 0) {
             self.postMessage({ type: 'tick_result', syncId: currentSyncId, lemmings: [] });
@@ -331,8 +333,8 @@ function updateLemmings(dt) {
 
         lem.age = (lem.age || 0) + dt;
 
-        // Death chance increases after age 60
-        if (lem.age > 60.0 && Math.random() < (lem.age - 60.0) * 0.0001 * dt) {
+        // Death chance increases at a certain point
+        if (lem.age > simParams.deathAge && Math.random() < (lem.age - simParams.deathAge) * simParams.deathChance * dt) {
             lem.dead = true;
             self.postMessage({ type: 'death', lem });
             continue; // Skip the rest of the logic for this deceased lemming
@@ -354,10 +356,13 @@ function updateLemmings(dt) {
                 // If they wander too far apart, they occasionally steer back towards their partner
                 if (dSq > 4.0 && Math.random() < 2.0 * dt) {
                     lem.a = Math.atan2(partner.y - lem.y, partner.x - lem.x);
-                } else if (enableReproduction && dSq < 2.0 && (lem.babyCooldown || 0) <= 0 && (partner.babyCooldown || 0) <= 0 && Math.random() < 0.2 * dt) {
+                } else if (enableReproduction && dSq < 2.0 && (lem.babyCooldown || 0) <= 0 && (partner.babyCooldown || 0) <= 0
+                         && lem.age <= simParams.maxBirthAge && partner.age <= simParams.maxBirthAge
+                         && Math.random() < simParams.babyChance * dt) {
+
                     // They are close and ready for a baby!
-                    lem.babyCooldown = 60.0; // 60 seconds before they can have another
-                    partner.babyCooldown = 60.0;
+                    lem.babyCooldown = simParams.babyCooldown;
+                    partner.babyCooldown = simParams.babyCooldown;
                     const baby = {
                         id: Math.random().toString(36).substr(2, 9),
                         partnerId: null,
@@ -383,7 +388,12 @@ function updateLemmings(dt) {
                 if (other !== lem && other.grownUp && !other.hasBuilt && !other.partnerId) {
                     const dSq = (lem.x - other.x)**2 + (lem.y - other.y)**2;
                     if (dSq < 2.0 && Math.random() < 0.5 * dt) { // Close enough to shoot their shot (Sen: lmfao, jezuz gemini you fira)
-                        if (Math.random() < 0.3) { // 30% chance of lifelong partnership!
+                        // Calculate age gap penalty
+                        let ageGap = Math.abs((lem.age || 0) - (other.age || 0));
+                        let adjustedLoveChance = Math.max(0, simParams.loveChance - (ageGap * simParams.ageGapPenalty));
+                        
+                        // Chance of lifelong partnership!
+                        if (Math.random() < adjustedLoveChance) {
                             lem.partnerId = other.id;
                             other.partnerId = lem.id;
                             // Celebrate with a synchronized dance!
