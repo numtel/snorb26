@@ -91,7 +91,7 @@ worker.onmessage = (e) => {
     if (msg.terrainChanged || msg.buildingsChanged || msg.needsBufferRebuild) {
       saveMapToLocal(true);
     }
-  } else if(msg.type === 'true_love' || msg.type === 'rejection' || msg.type === 'birth') {
+  } else if(msg.type === 'true_love' || msg.type === 'rejection' || msg.type === 'birth' || msg.type === 'death') {
     console.info(msg);
     spawnEventEffect(msg);
   }
@@ -119,6 +119,9 @@ function spawnEventEffect(msg) {
   } else if (msg.type === 'birth') {
     text.innerHTML = `🍼 Newborn! 🍼<br>${msg.lem.id}`;
     emojiChar = '🍼';
+  } else if (msg.type === 'death') {
+    text.innerHTML = `🪦 RIP 🪦<br>${msg.lem.id}`;
+    emojiChar = '💀';
   } else {
     text.innerHTML = `💔 Rejection! 💔<br>${msg.lem.id} & ${msg.other.id}`;
     emojiChar = '💔';

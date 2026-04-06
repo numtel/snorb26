@@ -70,6 +70,7 @@ input[type="text"], input[type="number"] { background:var(--face); color:var(--t
 .event-text.true_love { color: #ff88ff; }
 .event-text.rejection { color: #dddddd; }
 .event-text.birth     { color: #ffffaa; }
+.event-text.death     { color: #888888; }
 
 .event-emoji {
   position: absolute;

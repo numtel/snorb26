@@ -330,6 +330,14 @@ function updateLemmings(dt) {
         if (lem.glistenTimer > 0) lem.glistenTimer -= dt;
 
         lem.age = (lem.age || 0) + dt;
+
+        // Death chance increases after age 60
+        if (lem.age > 60.0 && Math.random() < (lem.age - 60.0) * 0.0001 * dt) {
+            lem.dead = true;
+            self.postMessage({ type: 'death', lem });
+            continue; // Skip the rest of the logic for this deceased lemming
+        }
+
         if (!lem.grownUp) {
             lem.s = 0; // Babies sit in one spot
             if (lem.age > 30.0) { // Take 30 seconds to grow up
@@ -486,6 +494,9 @@ function updateLemmings(dt) {
             }
         }
     }
+
+    // Remove the dead lemmings from the physical world
+    lemmings = lemmings.filter(l => !l.dead);
 
     let needsBufferRebuild = cubesAdded;
 

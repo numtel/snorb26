@@ -335,6 +335,7 @@ layout(location=2) in vec3 a_color;
 layout(location=3) in float a_size;
 layout(location=4) in float a_dance;
 layout(location=5) in float a_glisten;
+layout(location=6) in float a_age;
 
 uniform vec2 u_viewSize; uniform vec2 u_pan; uniform float u_zoom;
 uniform float u_tileW; uniform float u_tileH; uniform float u_elevStep;
@@ -345,6 +346,7 @@ out vec3 v_color;
 out float v_angle;
 out float v_dance;
 out float v_glisten;
+out float v_age;
 
 float getInterpolatedHeight(vec2 pos) {
     vec2 p = clamp(pos, vec2(0.0), vec2(float(u_gridW - 1), float(u_gridH - 1)));
@@ -380,6 +382,7 @@ void main() {
 
     v_dance = a_dance;
     v_glisten = a_glisten;
+    v_age = a_age;
 }`;
 
 export const fsLemming = `#version 300 es
@@ -388,6 +391,7 @@ in vec3 v_color;
 in float v_angle;
 in float v_dance;
 in float v_glisten;
+in float v_age;
 uniform float u_time;
 out vec4 fragColor;
 
@@ -425,12 +429,15 @@ void main() {
     float hipSway = sin(danceTime * 0.5) * 0.2 * v_dance;
     vec2 hipPos = vec2(hipSway, -0.2);
 
-    // 1. Head (Adds a slight head bob to match the hips)
-    vec2 headPos = vec2(hipSway * 0.3, 0.5);
+    // Calculate how badly their back hurts (starts slumping after 60)
+    float slump = clamp((v_age - 60.0) * 0.005, 0.0, 0.25);
+
+    // 1. Head (Offset forward by slump)
+    vec2 headPos = vec2(hipSway * 0.3 + (slump * 1.5), 0.5 - slump);
     d = min(d, length(uv - headPos) - 0.2);
 
-    // 2. Torso (Connects static shoulders down to the swaying hips)
-    vec2 shoulderPos = vec2(0.0, 0.3);
+    // 2. Torso (Offset shoulders forward by slump)
+    vec2 shoulderPos = vec2(slump, 0.3 - (slump * 0.5));
     d = min(d, sdSegment(uv, shoulderPos, hipPos) - r);
 
     // 3. Legs (Anchored to the moving hips instead of 0.0)

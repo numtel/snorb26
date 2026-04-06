@@ -206,12 +206,13 @@
     lemmingBuf = gl.createBuffer();
     gl.bindVertexArray(lemmingVao);
     gl.bindBuffer(gl.ARRAY_BUFFER, lemmingBuf);
-    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 36, 0);  // Position
-    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 36, 8);  // Angle
-    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 36, 12); // Color
-    gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 1, gl.FLOAT, false, 36, 24); // Size Multiplier
-    gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 1, gl.FLOAT, false, 36, 28); // isDancing
-    gl.enableVertexAttribArray(5); gl.vertexAttribPointer(5, 1, gl.FLOAT, false, 36, 32); // glistenTimer
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 40, 0);  // Position
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 40, 8);  // Angle
+    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 40, 12); // Color
+    gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 1, gl.FLOAT, false, 40, 24); // Size Multiplier
+    gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 1, gl.FLOAT, false, 40, 28); // isDancing
+    gl.enableVertexAttribArray(5); gl.vertexAttribPointer(5, 1, gl.FLOAT, false, 40, 32); // glistenTimer
+    gl.enableVertexAttribArray(6); gl.vertexAttribPointer(6, 1, gl.FLOAT, false, 40, 36); // Age
   }
 
   function setupTextures() {
@@ -732,17 +733,18 @@ export function draw(now) {
 
   // DRAW LEMMINGS
   if (lemmings.length > 0) {
-    const arr = new Float32Array(lemmings.length * 9);
+    const arr = new Float32Array(lemmings.length * 10);
     for (let i = 0; i < lemmings.length; i++) {
-        arr[i*9+0] = lemmings[i].x; arr[i*9+1] = lemmings[i].y;
-        arr[i*9+2] = lemmings[i].a;
-        arr[i*9+3] = lemmings[i].c[0]; arr[i*9+4] = lemmings[i].c[1]; arr[i*9+5] = lemmings[i].c[2];
+        arr[i*10+0] = lemmings[i].x; arr[i*10+1] = lemmings[i].y;
+        arr[i*10+2] = lemmings[i].a;
+        arr[i*10+3] = lemmings[i].c[0]; arr[i*10+4] = lemmings[i].c[1]; arr[i*10+5] = lemmings[i].c[2];
 
         // Size scales from 0.6 to 1.8 over 30 seconds
         let size = lemmings[i].grownUp ? 1.8 : 0.6 + ((lemmings[i].age || 0) / 30.0) * 1.2;
-        arr[i*9+6] = size;
-        arr[i*9+7] = lemmings[i].isDancing ? 1.0 : 0.0;
-        arr[i*9+8] = lemmings[i].glistenTimer || 0.0;
+        arr[i*10+6] = size;
+        arr[i*10+7] = lemmings[i].isDancing ? 1.0 : 0.0;
+        arr[i*10+8] = lemmings[i].glistenTimer || 0.0;
+        arr[i*10+9] = lemmings[i].age || 0.0;
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, lemmingBuf);
     gl.bufferData(gl.ARRAY_BUFFER, arr, gl.DYNAMIC_DRAW);
