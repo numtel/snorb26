@@ -99,7 +99,9 @@ worker.onmessage = (e) => {
 
 function spawnEventEffect(msg) {
   // Convert the tile coordinates where it happened to screen space
-  const [sx, sy] = getTileScreenPos(msg.lem.x, msg.lem.y);
+  const tx = Math.floor(msg.lem.x);
+  const ty = Math.floor(msg.lem.y);
+  const [sx, sy] = getTileScreenPos(tx, ty);
 
   const container = document.createElement('div');
   container.className = 'event-effect-container';
