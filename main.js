@@ -679,7 +679,8 @@ rangeInputs.forEach(input => {
   });
 });
 
-document.getElementById('generateMapBtn')?.addEventListener('click', () => {
+document.getElementById('generateMapBtn')?.addEventListener('click', (e) => {
+  e.preventDefault();
   const nextW = parseInt(document.getElementById('newWidth').value, 10) || 256;
   const nextH = parseInt(document.getElementById('newHeight').value, 10) || 256;
 
