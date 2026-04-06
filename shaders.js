@@ -334,6 +334,7 @@ layout(location=1) in float a_angle;
 layout(location=2) in vec3 a_color;
 layout(location=3) in float a_size;
 layout(location=4) in float a_dance;
+layout(location=5) in float a_glisten;
 
 uniform vec2 u_viewSize; uniform vec2 u_pan; uniform float u_zoom;
 uniform float u_tileW; uniform float u_tileH; uniform float u_elevStep;
@@ -343,6 +344,7 @@ uniform highp usampler2D u_elevTex;
 out vec3 v_color;
 out float v_angle;
 out float v_dance;
+out float v_glisten;
 
 float getInterpolatedHeight(vec2 pos) {
     vec2 p = clamp(pos, vec2(0.0), vec2(float(u_gridW - 1), float(u_gridH - 1)));
@@ -377,6 +379,7 @@ void main() {
     v_angle = a_angle + u_rotation;
 
     v_dance = a_dance;
+    v_glisten = a_glisten;
 }`;
 
 export const fsLemming = `#version 300 es
@@ -384,6 +387,7 @@ precision highp float;
 in vec3 v_color;
 in float v_angle;
 in float v_dance;
+in float v_glisten;
 uniform float u_time;
 out vec4 fragColor;
 
@@ -465,5 +469,9 @@ void main() {
     // Inner shadow/outline effect
     vec3 col = mix(v_color * 0.4, v_color, smoothstep(-0.05, 0.0, d));
 
+    if (v_glisten > 0.0) {
+        float g = (sin(u_time * 15.0 + uv.x * 20.0 - uv.y * 10.0) * 0.5 + 0.5) * min(v_glisten, 1.0);
+        col += vec3(1.0, 1.0, 0.8) * g; // Adds a bright golden-white shine
+    }
     fragColor = vec4(col, alpha);
 }`;

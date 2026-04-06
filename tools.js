@@ -793,6 +793,9 @@ export function placeLemmingAt(x, y) {
         isThinking: false,
         thinkTimer: 0,
         grownUp: false,
+        age: 0,
+        babyCooldown: 0,
+        glistenTimer: 0,
     });
     saveMapToLocal();
 }

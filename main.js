@@ -91,7 +91,7 @@ worker.onmessage = (e) => {
     if (msg.terrainChanged || msg.buildingsChanged || msg.needsBufferRebuild) {
       saveMapToLocal(true);
     }
-  } else if(msg.type === 'true_love' || msg.type === 'rejection') {
+  } else if(msg.type === 'true_love' || msg.type === 'rejection' || msg.type === 'birth') {
     console.info(msg);
     spawnEventEffect(msg);
   }
@@ -109,15 +109,21 @@ function spawnEventEffect(msg) {
   // Create the main text
   const text = document.createElement('div');
   text.className = `event-text ${msg.type}`;
+  let emojiChar;
+
   if (msg.type === 'true_love') {
     text.innerHTML = `💖 True Love! 💖<br>${msg.lem.id} & ${msg.other.id}`;
+    emojiChar = '💖';
+  } else if (msg.type === 'birth') {
+    text.innerHTML = `🍼 Newborn! 🍼<br>${msg.lem.id}`;
+    emojiChar = '🍼';
   } else {
     text.innerHTML = `💔 Rejection! 💔<br>${msg.lem.id} & ${msg.other.id}`;
+    emojiChar = '💔';
   }
   container.appendChild(text);
 
   // Spawn the exploding emojis
-  const emojiChar = msg.type === 'true_love' ? '💖' : '💔';
   for (let i = 0; i < 8; i++) {
     const emoji = document.createElement('div');
     emoji.className = 'event-emoji';
@@ -1024,6 +1030,7 @@ function openQueryDialog() {
         title.textContent = "Edit Lemming";
         html += `<label class="text"><span>ID:</span> <input type="text" id="q_id" value="${l.id || ''}"></label>`;
         html += `<label class="text"><span>Partner ID:</span> <input type="text" id="q_partner" value="${l.partnerId || ''}"></label>`;
+        html += `<label class="text"><span>Age:</span> <input type="number" id="q_age" value="${l.age}" step="0.1"></label>`;
         html += `<label class="text"><span>X:</span> <input type="number" id="q_x" value="${l.x}" step="0.1"></label>`;
         html += `<label class="text"><span>Y:</span> <input type="number" id="q_y" value="${l.y}" step="0.1"></label>`;
         html += `<label class="text"><span>Angle:</span> <input type="number" id="q_a" value="${l.a}" step="0.1"></label>`;
@@ -1071,6 +1078,7 @@ document.getElementById('saveQueryBtn')?.addEventListener('click', () => {
         const l = lemmings[target.index];
         l.id = document.getElementById('q_id').value || null;
         l.partnerId = document.getElementById('q_partner').value || null;
+        l.age = parseFloat(document.getElementById('q_age').value);
         l.x = parseFloat(document.getElementById('q_x').value);
         l.y = parseFloat(document.getElementById('q_y').value);
         l.a = parseFloat(document.getElementById('q_a').value);

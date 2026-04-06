@@ -48,6 +48,7 @@ input[type="text"], input[type="number"] { background:var(--face); color:var(--t
 
 .event-text.true_love { color: #ff88ff; }
 .event-text.rejection { color: #dddddd; }
+.event-text.birth     { color: #ffffaa; }
 
 .event-emoji {
   position: absolute;

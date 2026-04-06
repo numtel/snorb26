@@ -326,7 +326,17 @@ function updateLemmings(dt) {
 
         if (Math.random() < 0.05) lem.a += (Math.random() - 0.5);
 
-        if (!lem.grownUp && Math.random() < 0.001 * dt) lem.grownUp = true;
+        if (lem.babyCooldown > 0) lem.babyCooldown -= dt;
+        if (lem.glistenTimer > 0) lem.glistenTimer -= dt;
+
+        if (!lem.grownUp) {
+            lem.age = (lem.age || 0) + dt;
+            lem.s = 0; // Babies sit in one spot
+            if (lem.age > 30.0) { // Take 30 seconds to grow up
+                lem.grownUp = true;
+                lem.s = 1.5 + Math.random() * 2.5; // Start wandering!
+            }
+        }
 
         // --- NEW LOVE LOGIC ---
         if (lem.partnerId) {
@@ -336,6 +346,26 @@ function updateLemmings(dt) {
                 // If they wander too far apart, they occasionally steer back towards their partner
                 if (dSq > 4.0 && Math.random() < 2.0 * dt) {
                     lem.a = Math.atan2(partner.y - lem.y, partner.x - lem.x);
+                } else if (enableReproduction && dSq < 2.0 && (lem.babyCooldown || 0) <= 0 && (partner.babyCooldown || 0) <= 0 && Math.random() < 0.2 * dt) {
+                    // They are close and ready for a baby!
+                    lem.babyCooldown = 60.0; // 60 seconds before they can have another
+                    partner.babyCooldown = 60.0;
+                    const baby = {
+                        id: Math.random().toString(36).substr(2, 9),
+                        partnerId: null,
+                        x: (lem.x + partner.x) / 2, y: (lem.y + partner.y) / 2,
+                        a: Math.random() * Math.PI * 2,
+                        s: 0, // Sit in one spot
+                        c: [ (lem.c[0] + partner.c[0]) / 2, (lem.c[1] + partner.c[1]) / 2, (lem.c[2] + partner.c[2]) / 2 ],
+                        hasBuilt: false, hasResource: false, resourceId: 0,
+                        isDigging: false, digTimer: 0, digAccumulator: 0,
+                        isRaising: false, raiseTimer: 0, raiseAccumulator: 0,
+                        isDancing: false, danceTimer: 0, danceAccumulator: 0, danceRestTimer: 0,
+                        stress: 0, isThinking: false, thinkTimer: 0,
+                        grownUp: false, age: 0, babyCooldown: 0, glistenTimer: 10.0 // Glisten for 10 seconds!
+                    };
+                    lemmings.push(baby);
+                    self.postMessage({ type: 'birth', lem: baby });
                 }
             }
         } else if (lem.grownUp && !lem.hasBuilt && !lem.isThinking) {
@@ -458,43 +488,6 @@ function updateLemmings(dt) {
     }
 
     let needsBufferRebuild = cubesAdded;
-
-    if(enableReproduction) {
-      for (let cache of cubeCache) {
-          let c = cache.c;
-          if (cache.lemmingsInside >= 2) {
-              c.reproduceTimer = (c.reproduceTimer || 0) + dt;
-              if (c.reproduceTimer >= 30.0) {
-                  c.reproduceTimer = 0;
-                  c.h += 1.5;
-                  needsBufferRebuild = true;
-
-                  const maxDim = Math.max(c.w, c.l !== undefined ? c.l : c.w);
-                  const spawnRadius = (maxDim / 2) + 0.5;
-                  const angle = Math.random() * Math.PI * 2;
-
-                  const spawnX = clamp(c.x + Math.cos(angle) * spawnRadius, 1, GRID_W - 2);
-                  const spawnY = clamp(c.y + Math.sin(angle) * spawnRadius, 1, GRID_H - 2);
-
-                  lemmings.push({
-                      id: Math.random().toString(36).substr(2, 9),
-                      partnerId: null,
-                      x: spawnX, y: spawnY, a: angle,
-                      s: 1.5 + Math.random() * 2.5,
-                      c: [Math.random(), Math.random(), Math.random()],
-                      hasBuilt: false, hasResource: false, resourceId: 0,
-                      isDigging: false, digTimer: 0, digAccumulator: 0,
-                      isRaising: false, raiseTimer: 0, raiseAccumulator: 0,
-                      isDancing: false, danceTimer: 0, danceAccumulator: 0,
-                      stress: 0, isThinking: false, thinkTimer: 0,
-                      grownUp: false,
-                  });
-              }
-          } else {
-              c.reproduceTimer = 0;
-          }
-      }
-    }
 
     self.postMessage({
         type: 'tick_result',

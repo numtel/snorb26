@@ -282,6 +282,9 @@ export function serializeMap() {
     if (l.stress > 0) {
       props.push(['stress', (l.stress || 0).toFixed(2)]);
     }
+    if (l.age !== undefined) props.push(['age', l.age.toFixed(2)]);
+    if (l.babyCooldown > 0) props.push(['babyCooldown', l.babyCooldown.toFixed(2)]);
+    if (l.glistenTimer > 0) props.push(['glistenTimer', l.glistenTimer.toFixed(2)]);
     props.push(['grownUp', l.grownUp || false]);
     out += formatBlock('lemming', l, props);
   });
@@ -493,7 +496,11 @@ export function deserializeMap(text) {
           stress: parseFloat(props.stress) || 0,
           isThinking: props.isThinking === 'true',
           thinkTimer: parseFloat(props.thinkTimer) || 0,
+          // Sen: Notice how grownUp is a separate property from age lmfao
           grownUp: props.grownUp === 'true',
+          age: parseFloat(props.age) || 0,
+          babyCooldown: parseFloat(props.babyCooldown) || 0,
+          glistenTimer: parseFloat(props.glistenTimer) || 0,
         };
         data.lemmings.push(lem);
       }
