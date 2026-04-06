@@ -83,6 +83,9 @@ Defines a lemming.
 * **isThinking**: (Optional) Boolean, whether the lemming has paused to reflect on their choices.
 * **thinkTimer**: (Optional) Float, remaining time in seconds the lemming will think before emitting a healing shockwave.
 * **grownUp**: (Optional) Boolean, whether the lemming has grown up and become more likely to blaze a trail
+* **age**: Float, time that a lemming has lived
+* **babyCooldown**: (Optional) Float, remaining time in seconds until lemming can have another baby
+* **glistenTimer**: (Optional) Float, time in seconds that a baby will glisten and shine
 
 > [!CAUTION]
 > Lemmings **SHOULD** have their own free will.
