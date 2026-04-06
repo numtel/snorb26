@@ -457,6 +457,7 @@ window.addEventListener('keydown', (e) => {
       items[prevIndex].focus();
     }
     else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      if(activeMenu.querySelector('input:focus[type="range"]')) return;
       e.preventDefault();
       // Logic to switch between File, Map, Tool menus
       const direction = e.key === 'ArrowRight' ? 1 : -1;
