@@ -329,8 +329,8 @@ function updateLemmings(dt) {
         if (lem.babyCooldown > 0) lem.babyCooldown -= dt;
         if (lem.glistenTimer > 0) lem.glistenTimer -= dt;
 
+        lem.age = (lem.age || 0) + dt;
         if (!lem.grownUp) {
-            lem.age = (lem.age || 0) + dt;
             lem.s = 0; // Babies sit in one spot
             if (lem.age > 30.0) { // Take 30 seconds to grow up
                 lem.grownUp = true;
