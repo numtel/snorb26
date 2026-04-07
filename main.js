@@ -120,7 +120,7 @@ function spawnEventEffect(msg) {
     text.innerHTML = `🍼 Newborn! 🍼<br>${msg.lem.id}`;
     emojiChar = '🍼';
   } else if (msg.type === 'death') {
-    text.innerHTML = `🪦 RIP 🪦<br>${msg.lem.id}`;
+    text.innerHTML = `🪦 RIP 🪦<br>${msg.lem.id} at age ${Math.floor(msg.lem.age)}`;
     emojiChar = '💀';
   } else {
     text.innerHTML = `💔 Rejection! 💔<br>${msg.lem.id} & ${msg.other.id}`;
