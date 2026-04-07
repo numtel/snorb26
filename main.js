@@ -316,6 +316,7 @@ const openMenu = (trigger) => {
   closeAllMenus();
   trigger.classList.add('active');
   menu.show();
+  trigger.focus(); // Prevent the dialog from auto-focusing the first item
   activeMenu = menu;
 };
 
@@ -368,6 +369,15 @@ const enableOrientation = () => {
 
 // --- EVENT DELEGATION ---
 const toolsElement = document.getElementById('tools');
+toolsElement.addEventListener('pointermove', (e) => {
+  // Classic Win98: Sync mouse hover with focus so keys and mouse share the same state
+  if (activeMenu) {
+    const item = e.target.closest('.menu button, .menu input');
+    if (item && document.activeElement !== item) {
+      item.focus();
+    }
+  }
+});
 
 toolsElement.addEventListener('pointerdown', (e) => {
   const trigger = e.target.closest('.menu-trigger');
@@ -390,6 +400,40 @@ toolsElement.addEventListener('pointerover', (e) => {
   // Classic Windows behavior: If one menu is open, hovering over others opens them
   if (trigger && activeMenu) {
     openMenu(trigger);
+  }
+});
+
+toolsElement.addEventListener('keydown', (e) => {
+  const target = e.target;
+
+  // Only apply this to range sliders
+  if (target.tagName === 'INPUT' && target.type === 'range') {
+
+    // 1. Prevent arrow keys from moving the slider
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      // We don't use stopPropagation() here so the arrow keys
+      // can still bubble up to your menu navigation script!
+    }
+
+    // 2. Use + / - to change the slider values instead
+    else if (e.key === '+' || e.key === '=' || e.key === '-') {
+      e.preventDefault();
+
+      const step = parseFloat(target.step) || 1;
+      const min = parseFloat(target.min) || 0;
+      const max = parseFloat(target.max) || 100;
+      let val = parseFloat(target.value);
+
+      if (e.key === '+' || e.key === '=') val += step;
+      if (e.key === '-') val -= step;
+
+      // Keep it within bounds
+      target.value = Math.max(min, Math.min(max, val));
+
+      // Tell the rest of the app that the slider was moved
+      target.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   }
 });
 
@@ -457,7 +501,6 @@ window.addEventListener('keydown', (e) => {
       items[prevIndex].focus();
     }
     else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-      if(activeMenu.querySelector('input:focus[type="range"]')) return;
       e.preventDefault();
       // Logic to switch between File, Map, Tool menus
       const direction = e.key === 'ArrowRight' ? 1 : -1;

@@ -188,8 +188,7 @@ p { margin-bottom:15px; }
 .menubar .menu button:after {content:attr(data-key); position:absolute; top:2px; right:10px; }
 
 .menubar .menu button {display:block; position:relative; text-align:left; padding:2px 55px 2px 25px; width:100%;text-wrap:nowrap; }
-.menubar .menu button:hover:not(:disabled),
-.menubar .menu:not(:hover) button:focus:not(:disabled)
+.menubar .menu button:focus:not(:disabled)
 {background: linear-gradient(90deg, var(--activeBg) 0%, var(--activeBg2) 100%); color:var(--activeText);}
 .menubar .menu button:disabled {color:var(--hover); text-shadow: -1px -1px var(--textLight), 1px 1px var(--highlight);}
 .menubar .menu button svg { position:absolute; left:5px; top: 7px; }
