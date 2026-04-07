@@ -709,6 +709,24 @@ function menuClicks(command, tool) {
   saveMapToLocal();
 }
 
+document.querySelectorAll('input[type="range"]').forEach(input => {
+  // Create a span to hold the number value
+  const valDisplay = document.createElement('span');
+  valDisplay.textContent = input.value;
+  valDisplay.style.minWidth = '3ch'; // Prevents layout jitter when numbers change digits
+  valDisplay.style.textAlign = 'right';
+  
+  // Append it to the right of the input (inside the existing flexbox label)
+  input.parentElement.appendChild(valDisplay);
+
+  // Update the text whenever the slider is moved (via mouse or keyboard)
+  input.addEventListener('input', (e) => {
+    let val = e.target.value;
+    if(e.target.id === 'setDeathChance') val = String(Number(val).toFixed(5));
+    valDisplay.textContent = val;
+  });
+});
+
 const rangeInputs = document.querySelectorAll('#newMapDialog input[type="range"]');
 const mapForm = document.querySelector('#newMapDialog form');
 
@@ -797,6 +815,14 @@ export function updateViewMenuUI() {
   updateVal('setMaxBirthAge', appState.maxBirthAge);
   updateVal('setDeathAge', appState.deathAge);
   updateVal('setDeathChance', appState.deathChance);
+
+  document.querySelectorAll('input[type="range"]').forEach(input => {
+    if(input.nextElementSibling) {
+      let val = input.value;
+      if(input.id === 'setDeathChance') val = String(Number(val).toFixed(5));
+      input.nextElementSibling.textContent = val;
+    }
+  });
 }
 updateToolSettingsUI('pan');
 
