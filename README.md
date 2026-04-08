@@ -36,6 +36,8 @@ $ npm test
 
 [Beginning of raw webgl attempt in 2020](https://config.clonk.me/isometric-test/) ([source](https://github.com/numtel/webgl-isometric/tree/master)) never got very far before shifting to [an orthographic engine for Tiled map editor files](https://github.com/numtel/webgl-isometric)
 
+Memphis interface originally developed for ERC20 token [Wrap on Privacy](https://numtel.github.io/wrap-on-privacy/) project from 2025.
+
 This new Snorb has been brought to existence with much help from Google Gemini.
 
 ## License
