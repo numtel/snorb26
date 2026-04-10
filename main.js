@@ -60,6 +60,21 @@ import {
   getTileScreenPos,
 } from './tools.js';
 
+import * as stateAPI from './state.js';
+import * as rendererAPI from './renderer.js';
+import * as toolsAPI from './tools.js';
+
+window.snorb = {
+  state: stateAPI,
+  renderer: rendererAPI,
+  tools: toolsAPI,
+  syncWorkerState,
+  saveMapToLocal,
+  loadMapFromLocal,
+  downloadMapFile,
+  uploadMapFile
+};
+
 export const worker = new Worker('lemmingWorker.js');
 export let workerBusy = false;
 let currentSyncId = 0;
