@@ -36,38 +36,33 @@ import {
   rebuildCubeBuffers,
   loadCustomTexture,
 } from './renderer.js';
-import {
-  seedDemo,
-  brushApplyDelta,
-  brushForest,
-  brushSmoothTouched,
-  commitLevelSelection,
-  placeBuildingAtSelected,
-  placeCustomBuildingAtSelected,
-  removeBuildingAtSelected,
-  setTileInCenter,
-  appendExtrusionPoint,
-  finishExtrusion,
-  editPathDown,
-  editPathDrag,
-  syncExtrusionUI,
-  placeCubeAt,
-  removeCubeAt,
-  editCubeDown,
-  editCubeDrag,
-  placeLemmingAt,
-  queryDown,
-  getTileScreenPos,
-} from './tools.js';
+import { seedDemo, brushApplyDelta, brushSmoothTouched, commitLevelSelection } from './terrainTools.js';
+import { brushForest, placeCustomBuildingAtSelected, removeBuildingAtSelected } from './buildingTools.js';
+import { appendExtrusionPoint, finishExtrusion, editPathDown, editPathDrag, syncExtrusionUI } from './pathTools.js';
+import { placeCubeAt, removeCubeAt, editCubeDown, editCubeDrag } from './cubeTools.js';
+import { placeLemmingAt } from './lemmingTools.js';
+import { setTileInCenter, queryDown, getTileScreenPos } from './selectionTools.js';
 
 import * as stateAPI from './state.js';
 import * as rendererAPI from './renderer.js';
-import * as toolsAPI from './tools.js';
+import * as terrainAPI from './terrainTools.js';
+import * as buildingAPI from './buildingTools.js';
+import * as pathAPI from './pathTools.js';
+import * as cubeAPI from './cubeTools.js';
+import * as lemmingAPI from './lemmingTools.js';
+import * as selectionAPI from './selectionTools.js';
 
 window.snorb = {
   state: stateAPI,
   renderer: rendererAPI,
-  tools: toolsAPI,
+  tools: {
+    ...terrainAPI,
+    ...buildingAPI,
+    ...pathAPI,
+    ...cubeAPI,
+    ...lemmingAPI,
+    ...selectionAPI
+  },
   syncWorkerState,
   saveMapToLocal,
   loadMapFromLocal,
