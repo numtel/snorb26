@@ -60,11 +60,14 @@ $ npm test
 
 [Previous snow orb attempt in 2014](https://github.com/numtel/snorb) fell apart during investigations into a physics engine on top of the terrain, then something changed in the Three.js needing to be updated for modern browsers, and it all became unmaintainable.
 
+Snorb is short for snow orb or [snow globe](https://archive.md/7pnnJ). A graffiti tag near my parent's house, "Snorb 2012," along with "Heaven," that I saw in 2014 inspired the name.
+
 [Beginning of raw webgl attempt in 2020](https://config.clonk.me/isometric-test/) ([source](https://github.com/numtel/webgl-isometric/tree/master)) never got very far before shifting to [an orthographic engine for Tiled map editor files](https://github.com/numtel/webgl-isometric)
 
 Memphis interface originally developed for ERC20 token [Wrap on Privacy](https://numtel.github.io/wrap-on-privacy/) project from 2025.
 
 This new Snorb has been brought to existence with much help from Google Gemini.
+
 
 ## License
 
