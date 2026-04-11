@@ -11,9 +11,7 @@ import {
   rebuildBuildingInstances,
   loadCustomTexture,
 } from './renderer.js';
-import { saveMapToLocal } from './main.js';
-
-
+import { saveMapToLocal } from './storage.js';
 
 export function placeCustomBuildingAtSelected(input) {
   if (!selected.has) return;

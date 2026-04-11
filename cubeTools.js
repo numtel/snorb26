@@ -7,7 +7,7 @@ import {
 import {
   rebuildCubeBuffers,
 } from './renderer.js';
-import { saveMapToLocal } from './main.js';
+import { saveMapToLocal } from './storage.js';
 
 
 export function placeCubeAt(x, y) {

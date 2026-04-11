@@ -10,7 +10,7 @@ import {
 import {
   uploadElevations,
 } from './renderer.js';
-import { saveMapToLocal } from './main.js';
+import { saveMapToLocal } from './storage.js';
 
 export function seedDemo(config = null) {
   const cx = Math.floor(GRID_W * 0.5), cy = Math.floor(GRID_H * 0.5);

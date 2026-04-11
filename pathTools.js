@@ -6,8 +6,7 @@ import {
 import {
   rebuildExtrusionBuffers,
 } from './renderer.js';
-import { saveMapToLocal } from './main.js';
-
+import { saveMapToLocal } from './storage.js';
 
 export function appendExtrusionPoint(x, y) {
     if (!appState.activeExtrusion) {

@@ -1,8 +1,7 @@
 import {
   lemmings,
 } from './state.js';
-import { saveMapToLocal } from './main.js';
-
+import { saveMapToLocal } from './storage.js';
 
 export function placeLemmingAt(x, y) {
     lemmings.push({
