@@ -6,6 +6,7 @@ import {
 } from './state.js';
 import {
   rebuildExtrusionBuffers,
+  rebuildCubeBuffers,
 } from './renderer.js';
 import { saveMapToLocal } from './storage.js';
 
@@ -23,13 +24,13 @@ export function openQueryDialog() {
         title.textContent = "Edit Lemming";
         html += `<label class="text"><span>ID:</span> <input type="text" id="q_id" value="${l.id || ''}"></label>`;
         html += `<label class="text"><span>Partner ID:</span> <input type="text" id="q_partner" value="${l.partnerId || ''}"></label>`;
-        html += `<label class="text"><span>Age:</span> <input type="number" id="q_age" value="${l.age}" step="0.1"></label>`;
-        html += `<label class="text"><span>X:</span> <input type="number" id="q_x" value="${l.x}" step="0.1"></label>`;
-        html += `<label class="text"><span>Y:</span> <input type="number" id="q_y" value="${l.y}" step="0.1"></label>`;
-        html += `<label class="text"><span>Angle:</span> <input type="number" id="q_a" value="${l.a}" step="0.1"></label>`;
-        html += `<label class="text"><span>Speed:</span> <input type="number" id="q_s" value="${l.s}" step="0.1"></label>`;
+        html += `<label class="text"><span>Age:</span> <input type="text" id="q_age" value="${l.age}" ></label>`;
+        html += `<label class="text"><span>X:</span> <input type="text" id="q_x" value="${l.x}" ></label>`;
+        html += `<label class="text"><span>Y:</span> <input type="text" id="q_y" value="${l.y}" ></label>`;
+        html += `<label class="text"><span>Angle:</span> <input type="text" id="q_a" value="${l.a}" ></label>`;
+        html += `<label class="text"><span>Speed:</span> <input type="text" id="q_s" value="${l.s}" ></label>`;
         html += `<label class="text"><span>Color:</span> <input type="color" id="q_c" value="${toHex(l.c)}"></label>`;
-        html += `<label class="text"><span>Stress:</span> <input type="number" id="q_stress" value="${(l.stress || 0).toFixed(1)}" step="0.1"></label>`;
+        html += `<label class="text"><span>Stress:</span> <input type="text" id="q_stress" value="${(l.stress || 0).toFixed(1)}" ></label>`;
         html += `<label class="radio"><input type="checkbox" id="q_grown" ${l.grownUp?'checked':''}> Grown Up</label>`;
         html += `<label class="radio"><input type="checkbox" id="q_thinking" ${l.isThinking?'checked':''}> Thinking</label>`;
         html += `<label class="radio"><input type="checkbox" id="q_built" ${l.hasBuilt?'checked':''}> Has Built</label>`;
@@ -38,19 +39,19 @@ export function openQueryDialog() {
         const c = cubes[target.index];
         title.textContent = "Edit Cube";
         html += `<p>Lemmings Inside: <span id="q_lemming_count">${target.lemmingCount}</span></p>`;
-        html += `<label class="text"><span>X:</span> <input type="number" id="q_x" value="${c.x}" step="0.1"></label>`;
-        html += `<label class="text"><span>Y:</span> <input type="number" id="q_y" value="${c.y}" step="0.1"></label>`;
-        html += `<label class="text"><span>Width:</span> <input type="number" id="q_w" value="${c.w}" step="0.1"></label>`;
-        html += `<label class="text"><span>Length:</span> <input type="number" id="q_l" value="${c.l!==undefined?c.l:c.w}" step="0.1"></label>`;
-        html += `<label class="text"><span>Height:</span> <input type="number" id="q_h" value="${c.h}" step="0.1"></label>`;
-        html += `<label class="text"><span>Rotation:</span> <input type="number" id="q_r" value="${c.r||0}" step="0.05"></label>`;
+        html += `<label class="text"><span>X:</span> <input type="text" id="q_x" value="${c.x}" ></label>`;
+        html += `<label class="text"><span>Y:</span> <input type="text" id="q_y" value="${c.y}" ></label>`;
+        html += `<label class="text"><span>Width:</span> <input type="text" id="q_w" value="${c.w}" ></label>`;
+        html += `<label class="text"><span>Length:</span> <input type="text" id="q_l" value="${c.l!==undefined?c.l:c.w}" ></label>`;
+        html += `<label class="text"><span>Height:</span> <input type="text" id="q_h" value="${c.h}" ></label>`;
+        html += `<label class="text"><span>Rotation:</span> <input type="text" id="q_r" value="${c.r||0}" step="0.05"></label>`;
         html += `<label class="text"><span>Color:</span> <input type="color" id="q_c" value="${toHex(c.c)}"></label>`;
     } else if (target.type === 'path') {
         const p = extrusions[target.index];
         title.textContent = "Edit Path";
-        html += `<label class="text"><span>Width:</span> <input type="number" id="q_w" value="${p.width}" step="0.1"></label>`;
-        html += `<label class="text"><span>Height:</span> <input type="number" id="q_h" value="${p.height}" step="0.1"></label>`;
-        html += `<label class="text"><span>Altitude:</span> <input type="number" id="q_alt" value="${p.altitude||0}" step="0.1"></label>`;
+        html += `<label class="text"><span>Width:</span> <input type="text" id="q_w" value="${p.width}" ></label>`;
+        html += `<label class="text"><span>Height:</span> <input type="text" id="q_h" value="${p.height}" ></label>`;
+        html += `<label class="text"><span>Altitude:</span> <input type="text" id="q_alt" value="${p.altitude||0}" ></label>`;
         html += `<label class="text"><span>Color:</span> <input type="color" id="q_c" value="${toHex(p.color)}"></label>`;
     }
 
@@ -63,7 +64,8 @@ document.getElementById('cancelQueryBtn')?.addEventListener('click', () => {
     appState.queryTarget = null;
 });
 
-document.getElementById('saveQueryBtn')?.addEventListener('click', () => {
+document.querySelector('#queryDialog form')?.addEventListener('submit', () => {
+    event.preventDefault();
     const target = appState.queryTarget;
     if (!target) return;
 

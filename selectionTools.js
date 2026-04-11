@@ -17,6 +17,8 @@ import {
   canvas,
   requestPick,
 } from './renderer.js';
+import { isInsideCube } from './cubeTools.js';
+import { distToSegmentSq } from './pathTools.js';
 
 export function getHighlightedTile() {
   if (!selected.has) return null;

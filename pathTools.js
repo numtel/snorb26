@@ -42,7 +42,7 @@ let lastNodeClickTime = 0;
 let lastClickedNodeIndex = -1;
 
 function distSq(p1, p2) { return (p1.x - p2.x)**2 + (p1.y - p2.y)**2; }
-function distToSegmentSq(p, v, w) {
+export function distToSegmentSq(p, v, w) {
     const l2 = distSq(v, w);
     if (l2 === 0) return distSq(p, v);
     let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;

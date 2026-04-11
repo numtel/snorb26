@@ -1,281 +1,281 @@
-  import {
-    GRID_W,
-    GRID_H,
-    TILE_W,
-    TILE_H,
-    ELEV_STEP,
-    BUILD_SPRITES,
-    elevations,
-    SC3K_COLOR_STOPS,
-    buildingAt,
-    camera,
-    selected,
-    appState,
-    levelSel,
-    customBuildingRegistry,
-    mapSettings,
-    extrusions,
-    cubes,
-    lemmings,
-  } from './state.js';
-  import * as shaders from './shaders.js';
+import {
+  GRID_W,
+  GRID_H,
+  TILE_W,
+  TILE_H,
+  ELEV_STEP,
+  BUILD_SPRITES,
+  elevations,
+  SC3K_COLOR_STOPS,
+  buildingAt,
+  camera,
+  selected,
+  appState,
+  levelSel,
+  customBuildingRegistry,
+  mapSettings,
+  extrusions,
+  cubes,
+  lemmings,
+} from './state.js';
+import * as shaders from './shaders.js';
 
-  export let gl, canvas;
-  let program, waterProgram, buildProgram, pickProgram, skyProgram, extrudeProgram, editorProgram, lemmingProgram;
-  let vao, buildVao, buildInstanceBuf, extrudeVao, extrudeBuf, editorVao, editorBuf, cubeVao, cubeBuf, lemmingVao, lemmingBuf;
-  let elevTex, paletteTex, buildingTex;
-  let U, WU, BU, PU, SU, EU, EDU, LU;
-  let buildInstanceCount = 0;
-  export let extrudeVertCount = 0;
-  export let cubeVertCount = 0;
+export let gl, canvas;
+let program, waterProgram, buildProgram, pickProgram, skyProgram, extrudeProgram, editorProgram, lemmingProgram;
+let vao, buildVao, buildInstanceBuf, extrudeVao, extrudeBuf, editorVao, editorBuf, cubeVao, cubeBuf, lemmingVao, lemmingBuf;
+let elevTex, paletteTex, buildingTex;
+let U, WU, BU, PU, SU, EU, EDU, LU;
+let buildInstanceCount = 0;
+export let extrudeVertCount = 0;
+export let cubeVertCount = 0;
 
-  export const buildBuffers = new Map();
-  const typeBuffers = new Map();
-  export const customTextures = new Map();
+export const buildBuffers = new Map();
+const typeBuffers = new Map();
+export const customTextures = new Map();
 
-  const pickState = { fbo: null, colorTex: null, depthRb: null };
-  let pendingPick = null, pendingPickCb = [];
-  const pickPixel = new Uint8Array(4);
+const pickState = { fbo: null, colorTex: null, depthRb: null };
+let pendingPick = null, pendingPickCb = [];
+const pickPixel = new Uint8Array(4);
 
-  export function loadCustomTexture(url) {
-    if (customTextures.has(url)) return;
+export function loadCustomTexture(url) {
+  if (customTextures.has(url)) return;
 
-    const tex = gl.createTexture();
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  // Default 1x1 transparent pixel until image loads
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0]));
+
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
     gl.bindTexture(gl.TEXTURE_2D, tex);
-    // Default 1x1 transparent pixel until image loads
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    customTextures.get(url).width = img.width;
+    customTextures.get(url).height = img.height;
+  };
+  img.src = url;
+  customTextures.set(url, { tex, width: 32, height: 64 });
+}
 
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-      customTextures.get(url).width = img.width;
-      customTextures.get(url).height = img.height;
-    };
-    img.src = url;
-    customTextures.set(url, { tex, width: 32, height: 64 });
-  }
+export function updatePaletteTexture() {
+  const palData = new Uint8Array(256 * 4);
+  const waterLevel = mapSettings.waterLevel;
+  const originalPivot = 86; // The original T value for the 5th stop
 
-  export function updatePaletteTexture() {
-    const palData = new Uint8Array(256 * 4);
-    const waterLevel = mapSettings.waterLevel;
-    const originalPivot = 86; // The original T value for the 5th stop
+  // 1. Create a dynamic version of the stops based on current water level
+  const dynamicStops = SC3K_COLOR_STOPS.map((stop, i) => {
+    let newT = stop.t;
+    if (stop.t <= originalPivot) {
+      // Scale underwater stops: map [0, 86] to [0, waterLevel]
+      newT = (stop.t / originalPivot) * waterLevel;
+    } else {
+      // Scale above-water stops: map [86, 255] to [waterLevel, 255]
+      newT = waterLevel + ((stop.t - originalPivot) / (255 - originalPivot)) * (255 - waterLevel);
+    }
+    return { t: newT, c: stop.c };
+  });
 
-    // 1. Create a dynamic version of the stops based on current water level
-    const dynamicStops = SC3K_COLOR_STOPS.map((stop, i) => {
-      let newT = stop.t;
-      if (stop.t <= originalPivot) {
-        // Scale underwater stops: map [0, 86] to [0, waterLevel]
-        newT = (stop.t / originalPivot) * waterLevel;
-      } else {
-        // Scale above-water stops: map [86, 255] to [waterLevel, 255]
-        newT = waterLevel + ((stop.t - originalPivot) / (255 - originalPivot)) * (255 - waterLevel);
+  // 2. Fill the palette data using the dynamic stops
+  for (let i = 0; i < 256; i++) {
+    let a = dynamicStops[0], b = dynamicStops[dynamicStops.length - 1];
+
+    for (let s = 0; s < dynamicStops.length - 1; s++) {
+      if (i >= dynamicStops[s].t && i <= dynamicStops[s + 1].t) {
+        a = dynamicStops[s];
+        b = dynamicStops[s + 1];
+        break;
       }
-      return { t: newT, c: stop.c };
-    });
-
-    // 2. Fill the palette data using the dynamic stops
-    for (let i = 0; i < 256; i++) {
-      let a = dynamicStops[0], b = dynamicStops[dynamicStops.length - 1];
-
-      for (let s = 0; s < dynamicStops.length - 1; s++) {
-        if (i >= dynamicStops[s].t && i <= dynamicStops[s + 1].t) {
-          a = dynamicStops[s];
-          b = dynamicStops[s + 1];
-          break;
-        }
-      }
-
-      const range = b.t - a.t;
-      const u = range <= 0 ? 0 : (i - a.t) / range;
-
-      palData[i * 4]     = Math.round((a.c[0] + (b.c[0] - a.c[0]) * u) * 255);
-      palData[i * 4 + 1] = Math.round((a.c[1] + (b.c[1] - a.c[1]) * u) * 255);
-      palData[i * 4 + 2] = Math.round((a.c[2] + (b.c[2] - a.c[2]) * u) * 255);
-      palData[i * 4 + 3] = 255;
     }
 
-    gl.bindTexture(gl.TEXTURE_2D, paletteTex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, palData);
+    const range = b.t - a.t;
+    const u = range <= 0 ? 0 : (i - a.t) / range;
+
+    palData[i * 4]     = Math.round((a.c[0] + (b.c[0] - a.c[0]) * u) * 255);
+    palData[i * 4 + 1] = Math.round((a.c[1] + (b.c[1] - a.c[1]) * u) * 255);
+    palData[i * 4 + 2] = Math.round((a.c[2] + (b.c[2] - a.c[2]) * u) * 255);
+    palData[i * 4 + 3] = 255;
   }
 
-  export function initWebGL(canvasEl) {
-    canvas = canvasEl;
-    gl = canvas.getContext('webgl2', { antialias: true, alpha: false, depth: true, stencil: false });
-    if (!gl) throw new Error("WebGL2 required");
+  gl.bindTexture(gl.TEXTURE_2D, paletteTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, palData);
+}
 
-    gl.clearColor(0, 0, 0, 1);
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LEQUAL);
+export function initWebGL(canvasEl) {
+  canvas = canvasEl;
+  gl = canvas.getContext('webgl2', { antialias: true, alpha: false, depth: true, stencil: false });
+  if (!gl) throw new Error("WebGL2 required");
 
-    program = linkProgram(shaders.vsTerrain, shaders.fsTerrain);
-    waterProgram = linkProgram(shaders.vsWater, shaders.fsWater);
-    buildProgram = linkProgram(shaders.vsBuild, shaders.fsBuild);
-    pickProgram = linkProgram(shaders.vsPick, shaders.fsPick);
-    skyProgram = linkProgram(shaders.vsSky, shaders.fsSky);
-    extrudeProgram = linkProgram(shaders.vsExtrude, shaders.fsExtrude);
-    editorProgram = linkProgram(shaders.vsEditor, shaders.fsEditor);
-    lemmingProgram = linkProgram(shaders.vsLemming, shaders.fsLemming);
+  gl.clearColor(0, 0, 0, 1);
+  gl.enable(gl.DEPTH_TEST);
+  gl.depthFunc(gl.LEQUAL);
 
-    U = getUniforms(program, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_selectedId", "u_hasSelection", "u_outlinePx", "u_levelActive", "u_levelMin", "u_levelMax", "u_alpha"]);
-    WU = getUniforms(waterProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_waterLevel", "u_alpha", "u_time"]);
-    BU = getUniforms(buildProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_sheet", "u_spritePx", "u_sheetCols"]);
-    PU = getUniforms(pickProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
-    SU = getUniforms(skyProgram, ["u_tilt", "u_rotation", "u_pan"]);
-    EU = getUniforms(extrudeProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
-    EDU = getUniforms(editorProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
-    LU = getUniforms(lemmingProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_time"]);
+  program = linkProgram(shaders.vsTerrain, shaders.fsTerrain);
+  waterProgram = linkProgram(shaders.vsWater, shaders.fsWater);
+  buildProgram = linkProgram(shaders.vsBuild, shaders.fsBuild);
+  pickProgram = linkProgram(shaders.vsPick, shaders.fsPick);
+  skyProgram = linkProgram(shaders.vsSky, shaders.fsSky);
+  extrudeProgram = linkProgram(shaders.vsExtrude, shaders.fsExtrude);
+  editorProgram = linkProgram(shaders.vsEditor, shaders.fsEditor);
+  lemmingProgram = linkProgram(shaders.vsLemming, shaders.fsLemming);
 
-    setupGeometry();
-    setupTextures();
+  U = getUniforms(program, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_selectedId", "u_hasSelection", "u_outlinePx", "u_levelActive", "u_levelMin", "u_levelMax", "u_alpha"]);
+  WU = getUniforms(waterProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_paletteTex", "u_waterLevel", "u_alpha", "u_time"]);
+  BU = getUniforms(buildProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_sheet", "u_spritePx", "u_sheetCols"]);
+  PU = getUniforms(pickProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
+  SU = getUniforms(skyProgram, ["u_tilt", "u_rotation", "u_pan"]);
+  EU = getUniforms(extrudeProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
+  EDU = getUniforms(editorProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex"]);
+  LU = getUniforms(lemmingProgram, ["u_viewSize", "u_pan", "u_zoom", "u_tileW", "u_tileH", "u_elevStep", "u_gridW", "u_gridH", "u_rotation", "u_elevTex", "u_time"]);
 
-    editorVao = gl.createVertexArray();
-    editorBuf = gl.createBuffer();
-    gl.bindVertexArray(editorVao);
-    gl.bindBuffer(gl.ARRAY_BUFFER, editorBuf);
-    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
+  setupGeometry();
+  setupTextures();
+
+  editorVao = gl.createVertexArray();
+  editorBuf = gl.createBuffer();
+  gl.bindVertexArray(editorVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, editorBuf);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
+}
+
+function compileShader(type, src) {
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src);
+  gl.compileShader(sh);
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+  return sh;
+}
+
+function linkProgram(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compileShader(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, compileShader(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+
+function getUniforms(prog, names) {
+  return names.reduce((acc, n) => ({ ...acc, [n.replace('u_', '')]: gl.getUniformLocation(prog, n) }), {});
+}
+
+function setupGeometry() {
+  const corners = new Float32Array([0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0]);
+  vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, corners, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+  const buildQuad = new Float32Array([-0.5, 1.0, 0.0, 0.0, 0.5, 1.0, 1.0, 0.0, 0.5, 0.0, 1.0, 1.0, -0.5, 1.0, 0.0, 0.0, 0.5, 0.0, 1.0, 1.0, -0.5, 0.0, 0.0, 1.0]);
+  buildVao = gl.createVertexArray();
+  gl.bindVertexArray(buildVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, buildQuad, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 16, 0);
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 16, 8);
+
+  // Enable attributes but don't bind pointers yet (we do this in draw)
+  gl.enableVertexAttribArray(2); gl.vertexAttribDivisor(2, 1);
+  gl.enableVertexAttribArray(3); gl.vertexAttribDivisor(3, 1);
+
+  buildInstanceBuf = gl.createBuffer();
+
+  extrudeVao = gl.createVertexArray();
+  extrudeBuf = gl.createBuffer();
+  gl.bindVertexArray(extrudeVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, extrudeBuf);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 36, 0);
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 36, 8);
+  gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 36, 12);
+  gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 36, 24);
+
+  // Set up Cube geometry buffer (matches Extrude layout)
+  cubeVao = gl.createVertexArray();
+  cubeBuf = gl.createBuffer();
+  gl.bindVertexArray(cubeVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, cubeBuf);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 36, 0);
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 36, 8);
+  gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 36, 12);
+  gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 36, 24);
+
+  lemmingVao = gl.createVertexArray();
+  lemmingBuf = gl.createBuffer();
+  gl.bindVertexArray(lemmingVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, lemmingBuf);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 40, 0);  // Position
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 40, 8);  // Angle
+  gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 40, 12); // Color
+  gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 1, gl.FLOAT, false, 40, 24); // Size Multiplier
+  gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 1, gl.FLOAT, false, 40, 28); // isDancing
+  gl.enableVertexAttribArray(5); gl.vertexAttribPointer(5, 1, gl.FLOAT, false, 40, 32); // glistenTimer
+  gl.enableVertexAttribArray(6); gl.vertexAttribPointer(6, 1, gl.FLOAT, false, 40, 36); // Age
+}
+
+function setupTextures() {
+  elevTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, elevTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, GRID_W, GRID_H, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, elevations);
+
+  paletteTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, paletteTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  updatePaletteTexture();
+
+  // Buildings sprite sheet
+  const sprW = 32, sprH = 64; // Increased from 40 to 64
+  const sheet = document.createElement('canvas');
+  sheet.width = sprW * BUILD_SPRITES;
+  sheet.height = sprH;
+  const ctx = sheet.getContext('2d');
+
+  // Clear the canvas to ensure alpha is 0
+  ctx.clearRect(0, 0, sheet.width, sheet.height);
+
+  for (let i = 0; i < BUILD_SPRITES; i++) {
+    const x = i * sprW;
+    const hue = (i * 137.5) % 360;
+    const h = 12 + Math.random() * 25; // Random height
+
+    // We anchor the building at the bottom of our 64px tall sprite
+    const cx = x + 16;
+    const cy = sprH - 2;
+
+    // Draw Right Face
+    ctx.fillStyle = `hsl(${hue}, 40%, 30%)`;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy); ctx.lineTo(cx + 16, cy - 8);
+    ctx.lineTo(cx + 16, cy - 8 - h); ctx.lineTo(cx, cy - h);
+    ctx.fill();
+
+    // Draw Left Face
+    ctx.fillStyle = `hsl(${hue}, 40%, 45%)`;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy); ctx.lineTo(cx - 16, cy - 8);
+    ctx.lineTo(cx - 16, cy - 8 - h); ctx.lineTo(cx, cy - h);
+    ctx.fill();
+
+    // Draw Top Face
+    ctx.fillStyle = `hsl(${hue}, 50%, 65%)`;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - h); ctx.lineTo(cx + 16, cy - 8 - h);
+    ctx.lineTo(cx, cy - 16 - h); ctx.lineTo(cx - 16, cy - 8 - h);
+    ctx.fill();
   }
 
-  function compileShader(type, src) {
-    const sh = gl.createShader(type);
-    gl.shaderSource(sh, src);
-    gl.compileShader(sh);
-    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
-    return sh;
-  }
-
-  function linkProgram(vs, fs) {
-    const p = gl.createProgram();
-    gl.attachShader(p, compileShader(gl.VERTEX_SHADER, vs));
-    gl.attachShader(p, compileShader(gl.FRAGMENT_SHADER, fs));
-    gl.linkProgram(p);
-    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
-    return p;
-  }
-
-  function getUniforms(prog, names) {
-    return names.reduce((acc, n) => ({ ...acc, [n.replace('u_', '')]: gl.getUniformLocation(prog, n) }), {});
-  }
-
-  function setupGeometry() {
-    const corners = new Float32Array([0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0]);
-    vao = gl.createVertexArray();
-    gl.bindVertexArray(vao);
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-    gl.bufferData(gl.ARRAY_BUFFER, corners, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-
-    const buildQuad = new Float32Array([-0.5, 1.0, 0.0, 0.0, 0.5, 1.0, 1.0, 0.0, 0.5, 0.0, 1.0, 1.0, -0.5, 1.0, 0.0, 0.0, 0.5, 0.0, 1.0, 1.0, -0.5, 0.0, 0.0, 1.0]);
-    buildVao = gl.createVertexArray();
-    gl.bindVertexArray(buildVao);
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-    gl.bufferData(gl.ARRAY_BUFFER, buildQuad, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 16, 0);
-    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 16, 8);
-
-    // Enable attributes but don't bind pointers yet (we do this in draw)
-    gl.enableVertexAttribArray(2); gl.vertexAttribDivisor(2, 1);
-    gl.enableVertexAttribArray(3); gl.vertexAttribDivisor(3, 1);
-
-    buildInstanceBuf = gl.createBuffer();
-
-    extrudeVao = gl.createVertexArray();
-    extrudeBuf = gl.createBuffer();
-    gl.bindVertexArray(extrudeVao);
-    gl.bindBuffer(gl.ARRAY_BUFFER, extrudeBuf);
-    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 36, 0);
-    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 36, 8);
-    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 36, 12);
-    gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 36, 24);
-
-    // Set up Cube geometry buffer (matches Extrude layout)
-    cubeVao = gl.createVertexArray();
-    cubeBuf = gl.createBuffer();
-    gl.bindVertexArray(cubeVao);
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeBuf);
-    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 36, 0);
-    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 36, 8);
-    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 36, 12);
-    gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 36, 24);
-
-    lemmingVao = gl.createVertexArray();
-    lemmingBuf = gl.createBuffer();
-    gl.bindVertexArray(lemmingVao);
-    gl.bindBuffer(gl.ARRAY_BUFFER, lemmingBuf);
-    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 40, 0);  // Position
-    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 40, 8);  // Angle
-    gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 40, 12); // Color
-    gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 1, gl.FLOAT, false, 40, 24); // Size Multiplier
-    gl.enableVertexAttribArray(4); gl.vertexAttribPointer(4, 1, gl.FLOAT, false, 40, 28); // isDancing
-    gl.enableVertexAttribArray(5); gl.vertexAttribPointer(5, 1, gl.FLOAT, false, 40, 32); // glistenTimer
-    gl.enableVertexAttribArray(6); gl.vertexAttribPointer(6, 1, gl.FLOAT, false, 40, 36); // Age
-  }
-
-  function setupTextures() {
-    elevTex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, elevTex);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, GRID_W, GRID_H, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, elevations);
-
-    paletteTex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, paletteTex);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    updatePaletteTexture();
-
-    // Buildings sprite sheet
-    const sprW = 32, sprH = 64; // Increased from 40 to 64
-    const sheet = document.createElement('canvas');
-    sheet.width = sprW * BUILD_SPRITES;
-    sheet.height = sprH;
-    const ctx = sheet.getContext('2d');
-
-    // Clear the canvas to ensure alpha is 0
-    ctx.clearRect(0, 0, sheet.width, sheet.height);
-
-    for (let i = 0; i < BUILD_SPRITES; i++) {
-      const x = i * sprW;
-      const hue = (i * 137.5) % 360;
-      const h = 12 + Math.random() * 25; // Random height
-
-      // We anchor the building at the bottom of our 64px tall sprite
-      const cx = x + 16;
-      const cy = sprH - 2;
-
-      // Draw Right Face
-      ctx.fillStyle = `hsl(${hue}, 40%, 30%)`;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy); ctx.lineTo(cx + 16, cy - 8);
-      ctx.lineTo(cx + 16, cy - 8 - h); ctx.lineTo(cx, cy - h);
-      ctx.fill();
-
-      // Draw Left Face
-      ctx.fillStyle = `hsl(${hue}, 40%, 45%)`;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy); ctx.lineTo(cx - 16, cy - 8);
-      ctx.lineTo(cx - 16, cy - 8 - h); ctx.lineTo(cx, cy - h);
-      ctx.fill();
-
-      // Draw Top Face
-      ctx.fillStyle = `hsl(${hue}, 50%, 65%)`;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - h); ctx.lineTo(cx + 16, cy - 8 - h);
-      ctx.lineTo(cx, cy - 16 - h); ctx.lineTo(cx - 16, cy - 8 - h);
-      ctx.fill();
-    }
-
-    buildingTex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, buildingTex);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sheet);
-  }
+  buildingTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, buildingTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sheet);
+}
 
 export function uploadElevations() {
   gl.bindTexture(gl.TEXTURE_2D, elevTex);

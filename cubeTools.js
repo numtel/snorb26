@@ -25,7 +25,7 @@ export function placeCubeAt(x, y) {
 }
 
 // Helper: Check if point tx,ty is inside a rotated cube
-function isInsideCube(tx, ty, c) {
+export function isInsideCube(tx, ty, c) {
     const dx = tx - c.x;
     const dy = ty - c.y;
     const cosR = Math.cos(c.r || 0);
