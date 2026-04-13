@@ -1,3 +1,5 @@
+![Snorb logo](assets/android-chrome-192x192.png)
+
 # snorb26
 
 If the singularity is here, and I've seen it with my ooty-batooty mind's eye, and [we're living in a simulation](https://xkcd.com/505/), then [God-willing](https://www.sccs.swarthmore.edu/users/00/pwillen1/lit/biell.htm), we've got to do the same and build our own simulation. So play with worlds, plop lemmings, and dream up new things that they could be doing and implement it. Get it done! Send me a PR, or fork into your own path. It's all good. Let's simulate and observe what we come up with!
