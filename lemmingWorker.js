@@ -145,6 +145,7 @@ function updateLemmings(dt) {
             lem.danceAccumulator = (lem.danceAccumulator || 0) + dt;
 
             if (lem.danceAccumulator >= 0.5) {
+                // Dancing smoothes out the nearby terrain, helping lemmings move freely
                 lem.danceAccumulator = 0;
                 const cx = Math.floor(lem.x), cy = Math.floor(lem.y);
                 const r = 5;
@@ -185,6 +186,7 @@ function updateLemmings(dt) {
             }
 
             if (lem.danceTimer <= 0) {
+                // Eventually, lemmings get tired of dancing and must rest
                 lem.isDancing = false;
                 lem.danceRestTimer = 15.0 + Math.random() * 15.0;
             } else {
@@ -192,10 +194,12 @@ function updateLemmings(dt) {
                     if (lem === other) continue;
                     const dSq = (lem.x - other.x)**2 + (lem.y - other.y)**2;
                     if (dSq < 9.0) {
+                        // Dancing is contagious within a 3 tile radius
                         if (!other.isDancing && !other.isDigging && !other.isRaising && (other.danceRestTimer || 0) <= 0) {
                             other.isDancing = true;
                             other.danceTimer = 4.0 + Math.random() * 6.0;
                         }
+                        // Dancing groups cause color variations
                         if (other.isDancing) {
                             const diverge = 0.5 * dt;
                             lem.c = [
@@ -210,6 +214,7 @@ function updateLemmings(dt) {
             continue;
         }
 
+        // Lemming is sad, digging themselves into a pit
         if (lem.isDigging) {
             lem.stress = (lem.stress || 0) + dt * 2.0; // Digging holes is stressful work
             lem.digTimer -= dt;
@@ -232,6 +237,7 @@ function updateLemmings(dt) {
             continue;
         }
 
+        // Lemming is trail blazer!
         if (lem.isRaising) {
             lem.raiseTimer -= dt;
             lem.raiseAccumulator = (lem.raiseAccumulator || 0) + dt;
@@ -271,6 +277,7 @@ function updateLemmings(dt) {
         let nx = lem.x + Math.cos(lem.a) * lem.s * dt;
         let ny = lem.y + Math.sin(lem.a) * lem.s * dt;
 
+        // Turn around if reaching the end of the map
         if (nx < 0 || nx >= GRID_W - 1 || ny < 0 || ny >= GRID_H - 1) {
             lem.a += Math.PI;
             continue;
@@ -279,12 +286,14 @@ function updateLemmings(dt) {
         const cX = Math.floor(lem.x), cY = Math.floor(lem.y);
         const nX = Math.floor(nx), nY = Math.floor(ny);
 
+        // Cut down a sprite if haven't built a home and haven't cut one before
         if (!lem.hasBuilt && !lem.hasResource && buildingAt[cY * GRID_W + cX] > 0) {
             lem.resourceId = buildingAt[cY * GRID_W + cX];
             buildingAt[cY * GRID_W + cX] = 0;
             lem.hasResource = true;
             buildingsChanged = true;
         }
+        // If already cut down a sprite, randomly replant it elsewhere
         else if (lem.hasResource && lem.resourceId > 0 && buildingAt[cY * GRID_W + cX] === 0) {
             if (Math.random() < 0.5 * dt) {
                 buildingAt[cY * GRID_W + cX] = lem.resourceId;
@@ -297,6 +306,7 @@ function updateLemmings(dt) {
         const nextH = elevations[nY * GRID_W + nX];
         let hitObstacle = false;
 
+        // Turn in a new direction if hitting a path (extrusion)
         for (const cache of extCache) {
             const ext = cache.ext;
             for (let i = 0; i < ext.points.length - 1; i++) {
@@ -308,6 +318,7 @@ function updateLemmings(dt) {
         }
 
         if (!hitObstacle) {
+            // Or, also turn if hitting a cube
             for (const cache of cubeCache) {
                 if (Math.abs(nx - cache.c.x) > cache.radius + 1 || Math.abs(ny - cache.c.y) > cache.radius + 1) continue;
                 const dx = nx - cache.c.x;
@@ -321,13 +332,16 @@ function updateLemmings(dt) {
         }
 
         if (hitObstacle || Math.abs(currentH - nextH) > 5 || nextH <= mapSettings.waterLevel) {
+            // Perform the turn
             lem.a += (Math.random() * Math.PI) + Math.PI / 2;
             if (Math.abs(currentH - nextH) > 8) lem.stress = (lem.stress || 0) + 1.5; // Huge cliff! Yikes!
         } else {
+            // Move normally
             lem.x = nx;
             lem.y = ny;
         }
 
+        // There's always a chance to change direction a little
         if (Math.random() < 0.05) lem.a += (Math.random() - 0.5);
 
         if (lem.babyCooldown > 0) lem.babyCooldown -= dt;
@@ -415,6 +429,7 @@ function updateLemmings(dt) {
             }
         }
 
+        // New behavior activators
         if (!lem.isDigging && !lem.isRaising && !lem.isDancing) {
             if (lem.danceRestTimer <= 0 && Math.random() < 0.001 * dt) {
                 lem.isDancing = true;
@@ -431,6 +446,7 @@ function updateLemmings(dt) {
         }
     }
 
+    // Lemmings build houses if 2 are next to each other and both have cut a sprite
     let cubesAdded = false;
     const spatialGrid = new Map();
     for (let lem of lemmings) {
@@ -493,6 +509,9 @@ function updateLemmings(dt) {
         }
     }
 
+    // Keep count of number of lemmings inside each cube for the query dialog
+    // (before the current baby/love logic, lemmings reproduced simply if
+    //   >=2 were inside a cube)
     for (let lem of lemmings) {
         for (const cache of cubeCache) {
             if (Math.abs(lem.x - cache.c.x) > cache.radius || Math.abs(lem.y - cache.c.y) > cache.radius) continue;
@@ -512,6 +531,7 @@ function updateLemmings(dt) {
 
     let needsBufferRebuild = cubesAdded;
 
+    // Send the data back to the main thread
     self.postMessage({
         type: 'tick_result',
         syncId: currentSyncId,
