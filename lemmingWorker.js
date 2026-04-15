@@ -198,9 +198,11 @@ function updateLemmings(dt) {
                         }
                         if (other.isDancing) {
                             const diverge = 0.5 * dt;
-                            lem.c[0] = (lem.c[0] - (other.c[0] - lem.c[0]) * diverge + 1) % 1;
-                            lem.c[1] = (lem.c[1] - (other.c[1] - lem.c[1]) * diverge + 1) % 1;
-                            lem.c[2] = (lem.c[2] - (other.c[2] - lem.c[2]) * diverge + 1) % 1;
+                            lem.c = [
+                                (lem.c[0] - (other.c[0] - lem.c[0]) * diverge + 1) % 1,
+                                (lem.c[1] - (other.c[1] - lem.c[1]) * diverge + 1) % 1,
+                                (lem.c[2] - (other.c[2] - lem.c[2]) * diverge + 1) % 1
+                            ];
                         }
                     }
                 }
