@@ -166,8 +166,11 @@ void main(){
   vec2 localOffset = vec2(a_pos.x * u_spritePx.x, -a_pos.y * u_spritePx.y);
   vec2 world = base + vec2(0.0, -h * u_elevStep) + localOffset;
 
+  // Shift depth forward based on vertical offset to prevent clipping into steep terrain
+  float zOffset = (localOffset.y / u_elevStep) * 0.0006;
+
   vec2 clip = (((world - u_pan) * u_zoom + (u_viewSize * 0.5)) / u_viewSize) * 2.0 - 1.0; clip.y *= -1.0;
-  gl_Position = vec4(clip, depthZ, 1.0);
+  gl_Position = vec4(clip, depthZ + zOffset, 1.0);
   v_uv = a_uv; v_spr = a_spr;
 }`;
 
@@ -347,6 +350,7 @@ out float v_angle;
 out float v_dance;
 out float v_glisten;
 out float v_age;
+out float v_pointSizeWorld;
 
 float getInterpolatedHeight(vec2 pos) {
     vec2 p = clamp(pos, vec2(0.0), vec2(float(u_gridW - 1), float(u_gridH - 1)));
@@ -368,13 +372,18 @@ void main() {
     vec2 world = vec2((r.x - r.y) * (u_tileW * 0.5), (r.x + r.y) * (u_tileH * 0.5));
     float depthZ = 1.0 - ((r.x + r.y + float(u_gridW + u_gridH)*0.5) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006 - 0.002;
 
+    // Make the point larger so we have enough canvas to draw a procedural person
+    float pSize = max(16.0, 48.0 * u_zoom) * a_size;
+    gl_PointSize = pSize;
+    v_pointSizeWorld = pSize / u_zoom;
+
     world.y -= hV * u_elevStep;
+
+    // Shift the point sprite up so the visual feet (at uv.y = -0.6) sit exactly on the terrain anchor point
+    world.y -= 0.6 * (v_pointSizeWorld * 0.5);
 
     vec2 clip = (((world - u_pan) * u_zoom + (u_viewSize * 0.5)) / u_viewSize) * 2.0 - 1.0; clip.y *= -1.0;
     gl_Position = vec4(clip, depthZ, 1.0);
-
-    // Make the point larger so we have enough canvas to draw a procedural person
-    gl_PointSize = max(16.0, 48.0 * u_zoom) * a_size;
     v_color = a_color;
 
     // Add camera rotation to the lemming's world angle so they flip directions relative to the screen
@@ -392,7 +401,9 @@ in float v_angle;
 in float v_dance;
 in float v_glisten;
 in float v_age;
+in float v_pointSizeWorld;
 uniform float u_time;
+uniform float u_elevStep;
 out vec4 fragColor;
 
 // Helper to draw lines for limbs
@@ -406,6 +417,13 @@ void main() {
     // Remap gl_PointCoord to [-1, 1], flip Y so positive is up
     vec2 uv = gl_PointCoord * 2.0 - 1.0;
     uv.y = -uv.y;
+
+    // Pivot the depth exactly at the feet (uv.y = -0.6) so they perfectly match the terrain depth
+    float yWorldOffset = -(uv.y + 0.6) * (v_pointSizeWorld * 0.5);
+    float zOffset = (yWorldOffset / u_elevStep) * 0.0006;
+    
+    // Multiply by 0.5 because clip-space Z maps to half-scale in window-space depth
+    gl_FragDepth = gl_FragCoord.z + zOffset * 0.5;
 
     // Face left or right based on projected angle
     float facing = sign(cos(v_angle));
