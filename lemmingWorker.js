@@ -2,9 +2,10 @@ let GRID_W = 256, GRID_H = 256;
 let elevations, buildingAt, mapSettings = { waterLevel: 86 };
 let extrusions = [], cubes = [], lemmings = [];
 let enableReproduction = true;
-let simParams = { loveChance: 0.3, ageGapPenalty: 0.01, babyChance: 0.2, babyCooldown: 60.0, maxBirthAge: 50.0, deathAge: 60.0, deathChance: 0.0001 };
+let simParams = { loveChance: 0.3, ageGapPenalty: 0.01, babyChance: 0.2, babyCooldown: 60.0, maxBirthAge: 50.0, deathAge: 60.0, deathChance: 0.0001, maxAdditions: 50 };
 let currentSyncId = 0;
 let shockwaves = []; // Keep track of active healing shockwaves
+let simulationTime = 0;
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -40,6 +41,7 @@ self.onmessage = function(e) {
 };
 
 function updateLemmings(dt) {
+    simulationTime += dt;
     let buildingsChanged = false;
     let terrainChanged = false;
 
@@ -101,6 +103,7 @@ function updateLemmings(dt) {
         }
     }
 
+    let cubesAdded = false;
     const cubeCache = cubes.map(c => {
         const cosR = Math.cos(c.r || 0);
         const sinR = Math.sin(c.r || 0);
@@ -305,6 +308,9 @@ function updateLemmings(dt) {
         const currentH = elevations[cY * GRID_W + cX];
         const nextH = elevations[nY * GRID_W + nX];
         let hitObstacle = false;
+        let hitCube = null;
+        let hitCubeLx = 0; // Local X of the hit
+        let hitCubeLy = 0; // Local Y of the hit
 
         // Turn in a new direction if hitting a path (extrusion)
         for (const cache of extCache) {
@@ -326,12 +332,36 @@ function updateLemmings(dt) {
                 const lx = dx * cache.cosR + dy * cache.sinR;
                 const ly = -dx * cache.sinR + dy * cache.cosR;
                 if (Math.abs(lx) <= cache.hw && Math.abs(ly) <= cache.hl) {
-                    hitObstacle = true; break;
+                    hitObstacle = true;
+                    hitCube = cache.c;
+                    hitCubeLx = lx; // Record local coordinates
+                    hitCubeLy = ly;
+                    break;
                 }
             }
         }
 
         if (hitObstacle || Math.abs(currentH - nextH) > 5 || nextH <= mapSettings.waterLevel) {
+            if (hitCube) {
+                if (!hitCube.additions) hitCube.additions = [];
+                const cooldownDuration = 3.0; // 3 seconds of in-game time
+                // Cap additions per cube to prevent infinite geometry growth over long play sessions
+                if (hitCube.additions.length < simParams.maxAdditions && (!hitCube.lastAdditionTime || simulationTime - hitCube.lastAdditionTime > cooldownDuration)) {
+                    // Snap the angle to 0 or 90 degrees so the house perfectly aligns with the cube's edges
+                    const snappedAngle = Math.abs(hitCubeLx) > Math.abs(hitCubeLy) ? Math.PI / 2 : 0;
+
+                    hitCube.additions.push({
+                        x: hitCubeLx,
+                        y: hitCubeLy,
+                        a: snappedAngle,
+                        s: lem.s,
+                        c: [...lem.c]
+                    });
+                    hitCube.lastAdditionTime = simulationTime; // Record the game-time it was built
+                    cubesAdded = true; // Trick the worker into triggering a geometry buffer rebuild
+                }
+            }
+
             // Perform the turn
             lem.a += (Math.random() * Math.PI) + Math.PI / 2;
             if (Math.abs(currentH - nextH) > 8) lem.stress = (lem.stress || 0) + 1.5; // Huge cliff! Yikes!
@@ -447,7 +477,6 @@ function updateLemmings(dt) {
     }
 
     // Lemmings build houses if 2 are next to each other and both have cut a sprite
-    let cubesAdded = false;
     const spatialGrid = new Map();
     for (let lem of lemmings) {
         if (lem.hasBuilt || !lem.hasResource) continue;

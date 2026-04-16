@@ -84,6 +84,7 @@ const defaultAppState = {
   maxBirthAge: 50.0,
   deathAge: 60.0,
   deathChance: 0.0001,
+  maxAdditions: 50,
 }
 export const appState = Object.assign({}, defaultAppState);
 
@@ -208,6 +209,7 @@ export function serializeMap() {
     ['maxBirthAge', appState.maxBirthAge],
     ['deathAge', appState.deathAge],
     ['deathChance', appState.deathChance],
+    ['maxAdditions', appState.maxAdditions],
   ]);
 
   out += formatBlock('camera', camera, [
@@ -233,9 +235,15 @@ export function serializeMap() {
     const props = [
       ['x', c.x], ['y', c.y], ['w', c.w],
       ['l', c.l !== undefined ? c.l : c.w],
-      ['h', c.h], ['r', c.r || 0], ['c', c.c.join(', ')]
+      ['h', c.h], ['r', c.r || 0], ['c', c.c.join(', ')],
     ];
     if (c.customPts) props.push(['customPts', c.customPts.map(n => n.toFixed(3)).join(', ')]);
+    if (c.additions && c.additions.length > 0) {
+      const serializedAdds = c.additions.map(a =>
+        `${a.x.toFixed(3)},${a.y.toFixed(3)},${a.a.toFixed(3)},${a.s.toFixed(3)},${a.c[0].toFixed(3)}_${a.c[1].toFixed(3)}_${a.c[2].toFixed(3)}`
+      ).join(' | ');
+      props.push(['additions', serializedAdds]);
+    }
     if (c.rawDeltas) {
       if (c.rawDeltas.x) props.push(['dx', c.rawDeltas.x]);
       if (c.rawDeltas.y) props.push(['dy', c.rawDeltas.y]);
@@ -419,9 +427,22 @@ export function deserializeMap(text) {
         const cube = {
           x: parseFloat(props.x), y: parseFloat(props.y),
           w: parseFloat(props.w), l: parseFloat(props.l), h: parseFloat(props.h),
-          r: parseFloat(props.r), c: props.c.split(',').map(Number)
+          r: parseFloat(props.r), c: props.c.split(',').map(Number),
         };
         if (props.customPts) cube.customPts = props.customPts.split(',').map(Number);
+        if (props.additions) {
+          cube.additions = props.additions.split('|').map(str => {
+            const parts = str.trim().split(',');
+            const cParts = parts[4].split('_').map(Number);
+            return {
+              x: parseFloat(parts[0]),
+              y: parseFloat(parts[1]),
+              a: parseFloat(parts[2]),
+              s: parseFloat(parts[3]),
+              c: cParts
+            };
+          });
+        }
         const rawDeltas = {};
         const fns = {};
         let hasAnim = false;
@@ -568,6 +589,7 @@ export function deserializeMap(text) {
     if (data.map.maxBirthAge !== undefined) appState.maxBirthAge = parseFloat(data.map.maxBirthAge);
     if (data.map.deathAge !== undefined) appState.deathAge = parseFloat(data.map.deathAge);
     if (data.map.deathChance !== undefined) appState.deathChance = parseFloat(data.map.deathChance);
+    if (data.map.maxAdditions !== undefined) appState.maxAdditions = parseFloat(data.map.maxAdditions);
 
     if (data.brush.radius) {
       brush.radius = parseInt(data.brush.radius);

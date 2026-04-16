@@ -891,6 +891,129 @@ export function rebuildCubeBuffers(now = 0) {
         pushVert(p00.x, p00.y, 0, nb.x, nb.y, 0, bc[0], bc[1], bc[2]);
         pushVert(p00.x, p00.y, h, nb.x, nb.y, 0, bc[0], bc[1], bc[2]);
         pushVert(p10.x, p10.y, h, nb.x, nb.y, 0, bc[0], bc[1], bc[2]);
+
+        if (cube.additions) {
+            const hw = cube.w / 2;
+            const hl = cube.l / 2;
+
+            // Keep track of the vertical height to stack the houses
+            let currentZ = h;
+
+            cube.additions.forEach((add, index) => {
+                // Determine if this is the highest floor in the stack
+                const isTop = (index === cube.additions.length - 1);
+
+                // Dimensions of the house addition based on lemming speed
+                const addW = Math.min(0.6 + add.s * 0.2, hw * 0.9);
+                const addL = Math.min(0.6 + add.s * 0.2, hl * 0.9);
+                const addH = 1.0 + add.s * 0.3; // Wall height
+                const roofH = 1.2 + add.s * 0.2; // Peak height
+
+                // Clamp the local center so the house never spills over the cube's footprint
+                const cx = Math.max(-hw + addW, Math.min(hw - addW, add.x));
+                const cy = Math.max(-hl + addL, Math.min(hl - addL, add.y));
+
+                const cosA = Math.cos(add.a);
+                const sinA = Math.sin(add.a);
+                const sc = add.c;
+
+                // 4 corners of the house base in local coordinates, rotated by add.a
+                const corners = [
+                    {x: -addW, y: -addL}, // 0: Back-Left
+                    {x: addW, y: -addL},  // 1: Back-Right
+                    {x: addW, y: addL},   // 2: Front-Right
+                    {x: -addW, y: addL}   // 3: Front-Left
+                ];
+
+                // Transform to global coordinates using the existing rot() function
+                const gPts = corners.map(p => {
+                    const lx = cx + p.x * cosA - p.y * sinA;
+                    const ly = cy + p.x * sinA + p.y * cosA;
+                    return rot(lx, ly);
+                });
+
+                const z0 = currentZ;
+                const z1 = z0 + addH;
+                const z2 = z1 + roofH;
+
+                // Advance the stack height.
+                // Setting it to z1 means the next floor sits on the walls of this one,
+                // turning the roofs into beautiful overhanging eaves between stories!
+                currentZ = z1;
+
+                const wc = [sc[0]*0.8, sc[1]*0.8, sc[2]*0.8];
+                const rc = [sc[0]*0.5, sc[1]*0.5, sc[2]*0.5];
+
+                // Draw 4 Walls (Same for all tiers)
+                for(let i=0; i<4; i++) {
+                    const pA = gPts[i];
+                    const pB = gPts[(i+1)%4];
+                    const dx = pB.x - pA.x;
+                    const dy = pB.y - pA.y;
+                    const len = Math.hypot(dx, dy) || 1;
+                    const nx = dy / len;
+                    const ny = -dx / len;
+
+                    pushVert(pA.x, pA.y, z0, nx, ny, 0.0, wc[0], wc[1], wc[2]);
+                    pushVert(pB.x, pB.y, z0, nx, ny, 0.0, wc[0], wc[1], wc[2]);
+                    pushVert(pA.x, pA.y, z1, nx, ny, 0.0, wc[0], wc[1], wc[2]);
+
+                    pushVert(pB.x, pB.y, z0, nx, ny, 0.0, wc[0], wc[1], wc[2]);
+                    pushVert(pB.x, pB.y, z1, nx, ny, 0.0, wc[0], wc[1], wc[2]);
+                    pushVert(pA.x, pA.y, z1, nx, ny, 0.0, wc[0], wc[1], wc[2]);
+                }
+
+                if (isTop) {
+                    // --- PITCHED ROOF (Only for the top tier) ---
+
+                    // Safely calculate the two ridge peaks directly from the midpoints of the outer corners
+                    const gRidge0 = { x: (gPts[0].x + gPts[1].x)/2, y: (gPts[0].y + gPts[1].y)/2 }; // Back ridge
+                    const gRidge1 = { x: (gPts[3].x + gPts[2].x)/2, y: (gPts[3].y + gPts[2].y)/2 }; // Front ridge
+
+                    // Left Roof Plane
+                    pushVert(gPts[0].x, gPts[0].y, z1, 0, 0, 1, rc[0], rc[1], rc[2]);
+                    pushVert(gPts[3].x, gPts[3].y, z1, 0, 0, 1, rc[0], rc[1], rc[2]);
+                    pushVert(gRidge1.x, gRidge1.y, z2, 0, 0, 1, rc[0], rc[1], rc[2]);
+
+                    pushVert(gPts[0].x, gPts[0].y, z1, 0, 0, 1, rc[0], rc[1], rc[2]);
+                    pushVert(gRidge1.x, gRidge1.y, z2, 0, 0, 1, rc[0], rc[1], rc[2]);
+                    pushVert(gRidge0.x, gRidge0.y, z2, 0, 0, 1, rc[0], rc[1], rc[2]);
+
+                    // Right Roof Plane (Fixed the missing triangle to properly bridge gPts[1] to gPts[2])
+                    pushVert(gPts[2].x, gPts[2].y, z1, 0, 0, 1, rc[0], rc[1], rc[2]);
+                    pushVert(gPts[1].x, gPts[1].y, z1, 0, 0, 1, rc[0], rc[1], rc[2]);
+                    pushVert(gRidge0.x, gRidge0.y, z2, 0, 0, 1, rc[0], rc[1], rc[2]);
+
+                    pushVert(gPts[2].x, gPts[2].y, z1, 0, 0, 1, rc[0], rc[1], rc[2]);
+                    pushVert(gRidge0.x, gRidge0.y, z2, 0, 0, 1, rc[0], rc[1], rc[2]);
+                    pushVert(gRidge1.x, gRidge1.y, z2, 0, 0, 1, rc[0], rc[1], rc[2]);
+
+                    // Back Gable
+                    const fnx = gPts[1].y - gPts[0].y;
+                    const fny = -(gPts[1].x - gPts[0].x);
+                    pushVert(gPts[1].x, gPts[1].y, z1, fnx, fny, 0, wc[0], wc[1], wc[2]);
+                    pushVert(gPts[0].x, gPts[0].y, z1, fnx, fny, 0, wc[0], wc[1], wc[2]);
+                    pushVert(gRidge0.x, gRidge0.y, z2, fnx, fny, 0, wc[0], wc[1], wc[2]);
+
+                    // Front Gable
+                    const bnx = gPts[3].y - gPts[2].y;
+                    const bny = -(gPts[3].x - gPts[2].x);
+                    pushVert(gPts[3].x, gPts[3].y, z1, bnx, bny, 0, wc[0], wc[1], wc[2]);
+                    pushVert(gPts[2].x, gPts[2].y, z1, bnx, bny, 0, wc[0], wc[1], wc[2]);
+                    pushVert(gRidge1.x, gRidge1.y, z2, bnx, bny, 0, wc[0], wc[1], wc[2]);
+
+                } else {
+                    // --- FLAT ROOF (For intermediate floors that get stacked upon) ---
+                    pushVert(gPts[0].x, gPts[0].y, z1, 0, 0, 1, rc[0], rc[1], rc[2]);
+                    pushVert(gPts[1].x, gPts[1].y, z1, 0, 0, 1, rc[0], rc[1], rc[2]);
+                    pushVert(gPts[2].x, gPts[2].y, z1, 0, 0, 1, rc[0], rc[1], rc[2]);
+
+                    pushVert(gPts[0].x, gPts[0].y, z1, 0, 0, 1, rc[0], rc[1], rc[2]);
+                    pushVert(gPts[2].x, gPts[2].y, z1, 0, 0, 1, rc[0], rc[1], rc[2]);
+                    pushVert(gPts[3].x, gPts[3].y, z1, 0, 0, 1, rc[0], rc[1], rc[2]);
+                }
+            });
+        }
     }
 
     cubeVertCount = verts.length / 9;

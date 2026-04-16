@@ -132,7 +132,8 @@ export function syncWorkerState() {
       babyCooldown: appState.babyCooldown,
       maxBirthAge: appState.maxBirthAge,
       deathAge: appState.deathAge,
-      deathChance: appState.deathChance
+      deathChance: appState.deathChance,
+      maxAdditions: appState.maxAdditions,
     },
   });
 }

@@ -513,6 +513,7 @@ export function updateViewMenuUI() {
   updateVal('setMaxBirthAge', appState.maxBirthAge);
   updateVal('setDeathAge', appState.deathAge);
   updateVal('setDeathChance', appState.deathChance);
+  updateVal('setMaxAdditions', appState.maxAdditions);
 
   document.querySelectorAll('input[type="range"]').forEach(input => {
     if(input.nextElementSibling) {
@@ -574,6 +575,7 @@ Object.entries({
   setMaxBirthAge: e => appState.maxBirthAge = parseFloat(e.target.value),
   setDeathAge: e => appState.deathAge = parseFloat(e.target.value),
   setDeathChance: e => appState.deathChance = parseFloat(e.target.value),
+  setMaxAdditions: e => appState.maxAdditions = parseFloat(e.target.value),
 }).forEach((entry) => {
   const el = document.getElementById(entry[0])
 //   entry[1]({ target: el });
