@@ -358,7 +358,12 @@ function menuClicks(command, tool) {
       if (playBtn) playBtn.textContent = appState.isPlaying ? 'Pause' : 'Play';
       break;
     case 'reset':
-      document.getElementById('newMapDialog').showModal();
+      // Timer prevents this touch event from
+      // flowing into a click inside the dialog on mobile
+      setTimeout(() => {
+        document.getElementById('newMapDialog').showModal();
+        document.getElementById('generateMapBtn').focus();
+      }, 100);
       break;
     case 'open-file': uploadMapFile(); break;
     case 'save-file': downloadMapFile(); break;

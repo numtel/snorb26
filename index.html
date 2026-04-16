@@ -150,18 +150,20 @@
         <form>
           <fieldset>
             <legend>Map Size</legend>
-            <label class="text"><span>Width:</span> <input type="number" id="newWidth" value="256"></label>
-            <label class="text"><span>Height:</span> <input type="number" id="newHeight" value="256"></label>
+            <div class="row">
+              <label class="text"><span>Width:</span> <input type="number" id="newWidth" value="256"></label>
+              <label class="text"><span>Height:</span> <input type="number" id="newHeight" value="256"></label>
+            </div>
           </fieldset>
           <fieldset>
             <legend>Terrain Generation</legend>
-            <label class="text"><span>Islands (Falloff):</span> <input type="range" id="genIslands" min="0" max="100" value="80"></label>
-            <label class="text"><span>Mountains:</span> <input type="range" id="genMountains" min="0" max="100" value="0"></label>
-            <label class="text"><span>Valleys:</span> <input type="range" id="genValleys" min="0" max="100" value="0"></label>
-            <label class="text"><span>Canyons:</span> <input type="range" id="genCanyons" min="0" max="100" value="0"></label>
-            <label class="text"><span>Deserts (Dunes):</span> <input type="range" id="genDeserts" min="0" max="100" value="0"></label>
-            <label class="text"><span>Beaches:</span> <input type="range" id="genBeaches" min="0" max="100" value="0"></label>
-            <label class="text"><span>Erosion:</span> <input type="range" id="genErosion" min="0" max="100" value="0"></label>
+            <label class="text row"><span>Islands (Falloff):</span> <input type="range" id="genIslands" min="0" max="100" value="80"></label>
+            <label class="text row"><span>Mountains:</span> <input type="range" id="genMountains" min="0" max="100" value="0"></label>
+            <label class="text row"><span>Valleys:</span> <input type="range" id="genValleys" min="0" max="100" value="0"></label>
+            <label class="text row"><span>Canyons:</span> <input type="range" id="genCanyons" min="0" max="100" value="0"></label>
+            <label class="text row"><span>Deserts (Dunes):</span> <input type="range" id="genDeserts" min="0" max="100" value="0"></label>
+            <label class="text row"><span>Beaches:</span> <input type="range" id="genBeaches" min="0" max="100" value="0"></label>
+            <label class="text row"><span>Erosion:</span> <input type="range" id="genErosion" min="0" max="100" value="0"></label>
           </fieldset>
           <div class="controls">
             <button type="button" class="button" id="cancelMapBtn">Cancel</button>
