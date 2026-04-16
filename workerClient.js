@@ -139,6 +139,8 @@ export function syncWorkerState() {
       deathAge: appState.deathAge,
       deathChance: appState.deathChance,
       maxAdditions: appState.maxAdditions,
+      enableDestressShocks: appState.enableDestressShocks,
+      enableDanceSmoothing: appState.enableDanceSmoothing,
     },
   });
 }

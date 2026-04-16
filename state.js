@@ -74,6 +74,8 @@ const defaultAppState = {
   activeCubeHandle: -1,
   queryTarget: null,
   enableReproduction: true,
+  enableDestressShocks: true,
+  enableDanceSmoothing: true,
   isPlaying: true,
   gameSpeed: 1.0,
   gameTime: 0,
@@ -202,6 +204,8 @@ export function serializeMap() {
     ['isPlaying', appState.isPlaying],
     ['gameSpeed', appState.gameSpeed],
     ['enableReproduction', appState.enableReproduction],
+    ['enableDestressShocks', appState.enableDestressShocks],
+    ['enableDanceSmoothing', appState.enableDanceSmoothing],
     ['loveChance', appState.loveChance],
     ['ageGapPenalty', appState.ageGapPenalty],
     ['babyChance', appState.babyChance],
@@ -579,6 +583,8 @@ export function deserializeMap(text) {
     appState.showGrid = data.map.showGrid !== 'false';
     appState.showUnderground = data.map.showUnderground === 'true';
     appState.enableReproduction = data.map.enableReproduction === 'true';
+    appState.enableDestressShocks = data.map.enableDestressShocks === 'true';
+    appState.enableDanceSmoothing = data.map.enableDanceSmoothing === 'true';
 
     if (data.map.isPlaying !== undefined) appState.isPlaying = data.map.isPlaying !== 'false';
     if (data.map.gameSpeed !== undefined) appState.gameSpeed = parseFloat(data.map.gameSpeed) || 1.0;

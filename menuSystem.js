@@ -401,6 +401,14 @@ function menuClicks(command, tool) {
       appState.enableReproduction = !appState.enableReproduction;
       updateViewMenuUI();
       break;
+    case 'toggle-destress-shocks':
+      appState.enableDestressShocks = !appState.enableDestressShocks;
+      updateViewMenuUI();
+      break;
+    case 'toggle-dance-smoothing':
+      appState.enableDanceSmoothing = !appState.enableDanceSmoothing;
+      updateViewMenuUI();
+      break;
     default:
       console.error('invalid menu item', command);
   }
@@ -500,6 +508,14 @@ export function updateViewMenuUI() {
   const reproBtn = document.querySelector('button[data-command="toggle-reproduction"]');
   if (reproBtn) {
     reproBtn.classList.toggle('active', appState.enableReproduction);
+  }
+  const destressBtn = document.querySelector('button[data-command="toggle-destress-shocks"]');
+  if (destressBtn) {
+    destressBtn.classList.toggle('active', appState.enableDestressShocks);
+  }
+  const danceSmoothBtn = document.querySelector('button[data-command="toggle-dance-smoothing"]');
+  if (danceSmoothBtn) {
+    danceSmoothBtn.classList.toggle('active', appState.enableDanceSmoothing);
   }
   const playBtn = document.querySelector('button[data-command="toggle-play"]');
   if (playBtn) playBtn.textContent = appState.isPlaying ? 'Pause' : 'Play';

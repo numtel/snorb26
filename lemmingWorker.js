@@ -2,7 +2,18 @@ let GRID_W = 256, GRID_H = 256;
 let elevations, buildingAt, mapSettings = { waterLevel: 86 };
 let extrusions = [], cubes = [], lemmings = [];
 let enableReproduction = true;
-let simParams = { loveChance: 0.3, ageGapPenalty: 0.01, babyChance: 0.2, babyCooldown: 60.0, maxBirthAge: 50.0, deathAge: 60.0, deathChance: 0.0001, maxAdditions: 50 };
+let simParams = {
+  loveChance: 0.3,
+  ageGapPenalty: 0.01,
+  babyChance: 0.2,
+  babyCooldown: 60.0,
+  maxBirthAge: 50.0,
+  deathAge: 60.0,
+  deathChance: 0.0001,
+  maxAdditions: 50,
+  enableDestressShocks: true,
+  enableDanceSmoothing: true,
+};
 let currentSyncId = 0;
 let shockwaves = []; // Keep track of active healing shockwaves
 let simulationTime = 0;
@@ -125,8 +136,10 @@ function updateLemmings(dt) {
             if (lem.thinkTimer <= 0) {
                 lem.isThinking = false;
                 lem.stress = 0;
-                // Emit the healing shockwave!
-                shockwaves.push({ x: lem.x, y: lem.y, r: 0, maxR: 35, speed: 20 });
+                if(simParams.enableDestressShocks) {
+                  // Emit the healing shockwave!
+                  shockwaves.push({ x: lem.x, y: lem.y, r: 0, maxR: 35, speed: 20 });
+                }
             }
             continue; // Don't move or do anything else while reflecting
         }
@@ -147,7 +160,7 @@ function updateLemmings(dt) {
             lem.danceTimer -= dt;
             lem.danceAccumulator = (lem.danceAccumulator || 0) + dt;
 
-            if (lem.danceAccumulator >= 0.5) {
+            if (simParams.enableDanceSmoothing && lem.danceAccumulator >= 0.5) {
                 // Dancing smoothes out the nearby terrain, helping lemmings move freely
                 lem.danceAccumulator = 0;
                 const cx = Math.floor(lem.x), cy = Math.floor(lem.y);
