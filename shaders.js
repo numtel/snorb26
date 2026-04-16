@@ -22,7 +22,7 @@ vec3 rotatedIso(float x, float y, float hV) {
     float c = cos(u_rotation); float s = sin(u_rotation);
     vec2 r = vec2(p.x * c - p.y * s, p.x * s + p.y * c);
     vec2 world = vec2((r.x - r.y) * (u_tileW * 0.5), (r.x + r.y) * (u_tileH * 0.5));
-    float depthZ = 1.0 - ((r.x + r.y + float(u_gridW + u_gridH)*0.5) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006;
+    float depthZ = -((r.x + r.y) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006;
     return vec3(world, depthZ);
 }
 void main(){
@@ -109,7 +109,7 @@ vec3 rotatedIso(float x, float y, float hV) {
     float c = cos(u_rotation); float s = sin(u_rotation);
     vec2 r = vec2(p.x * c - p.y * s, p.x * s + p.y * c);
     vec2 world = vec2((r.x - r.y) * (u_tileW * 0.5), (r.x + r.y) * (u_tileH * 0.5));
-    float depthZ = 1.0 - ((r.x + r.y + float(u_gridW + u_gridH)*0.5) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006;
+    float depthZ = -((r.x + r.y) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006;
     return vec3(world, depthZ);
 }
 void main(){
@@ -161,7 +161,7 @@ void main(){
   float c = cos(u_rotation); float s = sin(u_rotation);
   vec2 r = vec2(p.x * c - p.y * s, p.x * s + p.y * c);
   vec2 base = vec2((r.x - r.y) * (u_tileW * 0.5), (r.x + r.y) * (u_tileH * 0.5));
-  float depthZ = 1.0 - ((r.x + r.y + float(u_gridW + u_gridH)*0.5) / float(u_gridW + u_gridH)) - (h * 0.0006);
+  float depthZ = -((r.x + r.y) / float(u_gridW + u_gridH)) - (h * 0.0006);
 
   vec2 localOffset = vec2(a_pos.x * u_spritePx.x, -a_pos.y * u_spritePx.y);
   vec2 world = base + vec2(0.0, -h * u_elevStep) + localOffset;
@@ -261,7 +261,7 @@ void main() {
     vec2 r = vec2(p.x * c - p.y * s, p.x * s + p.y * c);
 
     vec2 world = vec2((r.x - r.y) * (u_tileW * 0.5), (r.x + r.y) * (u_tileH * 0.5));
-    float depthZ = 1.0 - ((r.x + r.y + float(u_gridW + u_gridH)*0.5) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006 - a_zOffset * 0.001;
+    float depthZ = -((r.x + r.y) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006 - a_zOffset * 0.001;
 
     world.y -= hV * u_elevStep + (a_zOffset * u_elevStep);
 
@@ -311,7 +311,7 @@ void main() {
 
     vec2 world = vec2((r.x - r.y) * (u_tileW * 0.5), (r.x + r.y) * (u_tileH * 0.5));
     // Pop it slightly forward (-0.002) so it doesn't z-fight with the geometry
-    float depthZ = 1.0 - ((r.x + r.y + float(u_gridW + u_gridH)*0.5) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006 - 0.002;
+    float depthZ = -((r.x + r.y) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006 - 0.002;
 
     world.y -= hV * u_elevStep;
 
@@ -370,7 +370,7 @@ void main() {
     vec2 r = vec2(p.x * c - p.y * s, p.x * s + p.y * c);
 
     vec2 world = vec2((r.x - r.y) * (u_tileW * 0.5), (r.x + r.y) * (u_tileH * 0.5));
-    float depthZ = 1.0 - ((r.x + r.y + float(u_gridW + u_gridH)*0.5) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006 - 0.002;
+    float depthZ = -((r.x + r.y) / float(max(1, u_gridW + u_gridH))) - hV * 0.0006 - 0.002;
 
     // Make the point larger so we have enough canvas to draw a procedural person
     float pSize = max(16.0, 48.0 * u_zoom) * a_size;
