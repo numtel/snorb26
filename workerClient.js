@@ -13,6 +13,7 @@ import {
   uploadElevations,
   rebuildBuildingInstances,
   rebuildCubeBuffers,
+  canvas,
 } from './renderer.js';
 import { getTileScreenPos } from './selectionTools.js';
 import { saveMapToLocal } from './storage.js';
@@ -68,10 +69,14 @@ function spawnEventEffect(msg) {
   const ty = Math.floor(msg.lem.y);
   const [sx, sy] = getTileScreenPos(tx, ty);
 
+  // Map internal canvas buffer coordinates perfectly to CSS logical pixels
+  const cssX = (sx / canvas.width) * canvas.clientWidth;
+  const cssY = (sy / canvas.height) * canvas.clientHeight;
+
   const container = document.createElement('div');
   container.className = 'event-effect-container';
-  container.style.left = sx + 'px';
-  container.style.top = sy + 'px';
+  container.style.left = cssX + 'px';
+  container.style.top = cssY + 'px';
 
   // Create the main text
   const text = document.createElement('div');
