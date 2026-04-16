@@ -72,7 +72,8 @@ dialog h2 .close>svg { margin: 0 0 1px; }
 #main>.top-border {background: linear-gradient(90deg, var(--title1) 0%, var(--title2) 100%); height:4px;}
 
 fieldset { position:relative; border: 2px solid;border-color:   var(--bevel2dark) var(--bevel2light) var(--bevel2light) var(--bevel2dark); border-radius: 3px; padding: 0 20px 20px 20px; margin-bottom: 15px; }
-fieldset::before {content:""; position:absolute; top:0;bottom:0; margin-top:-15px; left:0; width:100%; pointer-events:none; border: 2px solid; border-color:var(--bevel2light) var(--bevel2dark) var(--bevel2dark) var(--bevel2light); }
+fieldset::before {content:""; position:absolute; top:4px;bottom:0; left:0; width:calc(100% - 4px); pointer-events:none; border: 2px solid; border-color:var(--bevel2light) var(--bevel2dark) var(--bevel2dark) var(--bevel2light); margin-top:-4px;}
+fieldset:has(legend)::before {margin-top:-15px;}
 legend { padding: 3px; background:var(--face); z-index:1; position:relative;}
 fieldset p { margin:5px 0; }
 label.radio { display: inline-block; padding: 4px; margin: 6px; }
