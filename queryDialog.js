@@ -111,8 +111,8 @@ export function openQueryDialog() {
     const dialog = document.getElementById('queryDialog');
     if (!dialog.open) {
         dialog.showModal();
+        document.getElementById('saveQueryBtn').focus();
     }
-    document.getElementById('queryDialog').showModal();
 }
 
 document.getElementById('cancelQueryBtn')?.addEventListener('click', () => {
@@ -137,7 +137,13 @@ document.querySelector('#queryDialog form')?.addEventListener('submit', () => {
         l.c = fromHex(document.getElementById('q_c').value);
         l.grownUp = document.getElementById('q_grown').checked;
         l.stress = parseFloat(document.getElementById('q_stress').value);
+        const wasThinking = l.isThinking;
         l.isThinking = document.getElementById('q_thinking').checked;
+        // If the user forces a lemming to think, they must be given a time amount
+        if(!wasThinking && l.isThinking) {
+          // This is much longer than would naturally happen in lemmingWorker.js
+          l.thinkTimer = 10 + Math.random() * 10;
+        }
         l.hasBuilt = document.getElementById('q_built').checked;
         l.hasResource = document.getElementById('q_resource').checked;
     } else if (target.type === 'cube') {

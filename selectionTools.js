@@ -98,13 +98,20 @@ export function setHighlightedTile(x, y) {
 
 
 export function queryDown(tx, ty) {
-    // 1. Check Lemmings (1 tile radius)
-    let minDist = 1.0;
+    // 1. Check Lemmings (2 tile radius)
+    // We use distance squared for performance: 2.0 * 2.0 = 4.0
+    let minDist = 4.0;
     let foundLemming = -1;
+
     for (let i = 0; i < lemmings.length; i++) {
         const l = lemmings[i];
         const d = (l.x - tx)**2 + (l.y - ty)**2;
-        if (d < minDist) { minDist = d; foundLemming = i; }
+
+        // If this lemming is within the 2-tile radius AND closer than any previously found lemming
+        if (d < minDist) {
+            minDist = d;
+            foundLemming = i;
+        }
     }
     if (foundLemming !== -1) {
         appState.queryTarget = { type: 'lemming', index: foundLemming };

@@ -271,7 +271,11 @@ export function performTool(e) {
     syncWorkerState();
   } else if (appState.toolMode === 'query') {
     const target = queryDown(selected.x, selected.y);
-    if (target) openQueryDialog();
+    if (target) {
+      // Timer prevents this touch event from
+      // flowing into a click inside the dialog on mobile
+      setTimeout(() => openQueryDialog(), 100);
+    }
   }
 }
 
