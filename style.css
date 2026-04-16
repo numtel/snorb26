@@ -5,9 +5,9 @@ body.window-inactive canvas {
   outline: 5px solid red;
   outline-offset: -5px; /* Pulls the outline inside the viewport edge */
 }
-#scene { position:fixed; inset:0; width:100%; height:100%; touch-action:none; }
+#scene { position:fixed; inset:0; width:100%; height:calc(100% - 45px); top:45px; touch-action:none; }
 #hud {
-  position:fixed; right:12px; bottom:12px;
+  position:fixed; z-index: 99; right:12px; bottom:12px;
   padding:8px 10px; border-radius:10px;
   background:rgba(0,0,0,0.55); color:#d6d6d6;
   font:12px/1.35 system-ui, -apple-system, sans-serif;
@@ -50,7 +50,7 @@ input[type="text"], input[type="number"] { background:var(--face); color:var(--t
 .event-effect-container {
   position: fixed;
   pointer-events: none;
-  z-index: 1000;
+  z-index: 98;
   transform: translate(-50%, -50%);
   text-align: center;
   font-family: system-ui, -apple-system, sans-serif;
