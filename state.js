@@ -47,6 +47,7 @@ export const camera = {
   targetRotation: 0,
   minZoom: 0.01,
   maxZoom: 5.0,
+  defaultZoom: 0.1,
   minTilt: 0.35,
   maxTilt: 2.0,
   lerpFactor: 0.15

@@ -482,7 +482,7 @@ document.querySelector('#newMapDialog form')?.addEventListener('submit', (e) => 
 
   // Reset Camera: Center the view and zoom out completely
   setTileInCenter(GRID_W / 2, GRID_H / 2);
-  camera.targetZoom = camera.minZoom;
+  camera.targetZoom = camera.defaultZoom;
 
   // Update GPU and Save
   updatePaletteTexture();
