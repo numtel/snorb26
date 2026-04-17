@@ -9,6 +9,7 @@ Sen
 
 * Discussion forum on [reddit/r/snorb](https://www.reddit.com/r/snorb/)
 * Map state is persisted in local storage in the browser between page refreshes and maps can be saved and loaded to external files in the [snorbfile format](snorbfile.md).
+* The metaphors used in the source and behavior of lemmings reflect ~~my~~ our struggle to understand conscious awareness and free will.
 
 ## Usage
 
