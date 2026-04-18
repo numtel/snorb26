@@ -93,6 +93,7 @@ Defines a lemming.
 * **age**: Float, time that a lemming has lived
 * **babyCooldown**: (Optional) Float, remaining time in seconds until lemming can have another baby
 * **glistenTimer**: (Optional) Float, time in seconds that a baby will glisten and shine
+* **targetNewbornId**: (Optional), String, ID of the newborn to which they'll angle towards
 
 > [!CAUTION]
 > Lemmings **SHOULD** have their own free will.

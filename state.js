@@ -313,6 +313,7 @@ export function serializeMap() {
     if (l.age !== undefined) props.push(['age', l.age.toFixed(2)]);
     if (l.babyCooldown > 0) props.push(['babyCooldown', l.babyCooldown.toFixed(2)]);
     if (l.glistenTimer > 0) props.push(['glistenTimer', l.glistenTimer.toFixed(2)]);
+    if (l.targetNewbornId) props.push(['targetNewbornId', l.targetNewbornId]);
     props.push(['grownUp', l.grownUp || false]);
     out += formatBlock('lemming', l, props);
   });
@@ -536,6 +537,7 @@ export function deserializeMap(text) {
           age: parseFloat(props.age) || 0,
           babyCooldown: parseFloat(props.babyCooldown) || 0,
           glistenTimer: parseFloat(props.glistenTimer) || 0,
+          targetNewbornId: props.targetNewbornId || null,
         };
         data.lemmings.push(lem);
       }

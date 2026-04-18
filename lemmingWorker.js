@@ -128,6 +128,8 @@ function updateLemmings(dt) {
         return { ext, minSqDist: Math.pow(ext.width / 2 + 0.2, 2) };
     });
 
+    const glisteningNewborns = lemmings.filter(l => (l.glistenTimer || 0) > 0);
+
     for (let lem of lemmings) {
         lem.stress = Math.max(0, (lem.stress || 0) - dt * 0.2); // Naturally calm down over time
 
@@ -290,6 +292,36 @@ function updateLemmings(dt) {
             continue;
         }
 
+        // Steer non-newborns towards newborns within a 20-tile radius
+        if ((lem.glistenTimer || 0) <= 0) {
+            // Check if current target is still valid and in range
+            if (lem.targetNewbornId) {
+                const target = lemmingsById.get(lem.targetNewbornId);
+                const dSq = target ? distSq(lem, target) : Infinity;
+
+                // Drop target if it vanished, stopped glistening, or got too far away
+                if (!target || (target.glistenTimer || 0) <= 0 || dSq >= 400.0) {
+                    lem.targetNewbornId = null;
+                } else if (dSq > 9.0) { // 9.0 is a 3-tile radius squared
+                    // Only forcefully steer if they wander outside the 3-tile radius
+                    lem.a = Math.atan2(target.y - lem.y, target.x - lem.x);
+                }
+            }
+
+            // If they don't have a target, look for a random one in range
+            if (!lem.targetNewbornId && glisteningNewborns.length > 0) {
+                const inRange = glisteningNewborns.filter(nb => distSq(lem, nb) < 400.0);
+                if (inRange.length > 0) {
+                    const chosen = inRange[Math.floor(Math.random() * inRange.length)];
+                    lem.targetNewbornId = chosen.id;
+
+                    if (distSq(lem, chosen) > 4.0) {
+                        lem.a = Math.atan2(chosen.y - lem.y, chosen.x - lem.x);
+                    }
+                }
+            }
+        }
+
         let nx = lem.x + Math.cos(lem.a) * lem.s * dt;
         let ny = lem.y + Math.sin(lem.a) * lem.s * dt;
 
@@ -437,6 +469,8 @@ function updateLemmings(dt) {
                         grownUp: false, age: 0, babyCooldown: 0, glistenTimer: 10.0 // Glisten for 10 seconds!
                     };
                     lemmings.push(baby);
+                    lem.targetNewbornId = baby.id;
+                    partner.targetNewbornId = baby.id;
                     self.postMessage({ type: 'birth', lem: baby });
                 }
             }
