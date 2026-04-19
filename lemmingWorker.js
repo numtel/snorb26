@@ -211,6 +211,22 @@ function updateLemmings(dt) {
                 for (let other of lemmings) {
                     if (lem === other) continue;
                     const dSq = (lem.x - other.x)**2 + (lem.y - other.y)**2;
+
+                    // --- PARTY POOPER LOGIC ---
+                    // 100.0 is 10 tiles squared
+                    if ((other.danceProclivity || 0) < 0.01 && dSq < 100.0) {
+                        // 2.0 is roughly arriving at the lemming (within ~1.4 tiles)
+                        if (dSq < 2.0) {
+                            lem.isDancing = false;
+                            lem.danceRestTimer = 15.0 + Math.random() * 15.0; // Force them to rest
+                            self.postMessage({ type: 'party_pooper', lem, other });
+                            break; // Stop spreading the dance, since this lemming is no longer dancing
+                        } else {
+                            // Angle the strict lemming directly towards the dancer
+                            other.a = Math.atan2(lem.y - other.y, lem.x - other.x);
+                        }
+                    }
+
                     if (dSq < 9.0) {
                         // Dancing is contagious within a 3 tile radius
                         if (!other.isDancing && !other.isDigging && !other.isRaising && (other.danceRestTimer || 0) <= 0) {

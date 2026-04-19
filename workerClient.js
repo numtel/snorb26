@@ -57,7 +57,7 @@ worker.onmessage = (e) => {
     if (msg.terrainChanged || msg.buildingsChanged || msg.needsBufferRebuild) {
       saveMapToLocal(true);
     }
-  } else if(msg.type === 'true_love' || msg.type === 'rejection' || msg.type === 'birth' || msg.type === 'death') {
+  } else if(['true_love', 'rejection', 'birth', 'death', 'party_pooper'].includes(msg.type)) {
     console.info(msg);
     spawnEventEffect(msg);
   }
@@ -92,6 +92,9 @@ function spawnEventEffect(msg) {
   } else if (msg.type === 'death') {
     text.innerHTML = `🪦 RIP 🪦<br>${msg.lem.id} at age ${Math.floor(msg.lem.age)}`;
     emojiChar = '💀';
+  } else if (msg.type === 'party_pooper') {
+    text.innerHTML = `💩 Party Pooper! 💩<br>${msg.other.id} stopped ${msg.lem.id}`;
+    emojiChar = '💩';
   } else {
     text.innerHTML = `💔 Rejection! 💔<br>${msg.lem.id} & ${msg.other.id}`;
     emojiChar = '💔';
