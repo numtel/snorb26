@@ -175,10 +175,10 @@ void main(){
 }`;
 
 export const fsBuild = `#version 300 es
-precision highp float; in vec2 v_uv; in float v_spr; uniform sampler2D u_sheet; uniform float u_sheetCols; out vec4 fragColor;
+precision highp float; in vec2 v_uv; in float v_spr; uniform sampler2D u_sheet; uniform float u_sheetCols; uniform float u_alpha; out vec4 fragColor;
 void main(){
   vec4 c = texture(u_sheet, vec2(v_uv.x * (1.0 / u_sheetCols) + floor(v_spr + 0.5) * (1.0 / u_sheetCols), v_uv.y));
-  if(c.a < 0.05) discard; fragColor = c;
+  if(c.a < 0.05) discard; c.a *= u_alpha; fragColor = c;
 }`;
 
 export const vsPick = vsTerrain;
