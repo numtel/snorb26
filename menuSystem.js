@@ -30,6 +30,7 @@ import {
   rebuildCubeBuffers,
   loadCustomTexture,
 } from './renderer.js';
+import {openQueryDialog} from './queryDialog.js';
 import { getTileScreenPos, setTileInCenter } from './selectionTools.js';
 import { syncExtrusionUI, finishExtrusion } from './pathTools.js';
 import { seedDemo } from './terrainTools.js';
@@ -231,6 +232,7 @@ window.addEventListener('keydown', (e) => {
   if(!tool) tool = document.querySelector(`button[data-key="${code}"]`);
 
   if(tool) {
+    !e.ctrlKey && e.preventDefault();
     if (e.repeat) return;
     const cmd = tool.dataset.command;
     const toolMode = tool.dataset.tool;
@@ -376,6 +378,10 @@ function menuClicks(command, tool) {
     case 'show-help': document.getElementById('helpDialog').showModal(); break;
     case 'show-about': document.getElementById('aboutDialog').showModal(); break;
     case 'open-reddit': window.open('https://reddit.com/r/snorb'); break;
+    case 'find-lemming':
+      document.getElementById('findLemmingDialog').showModal();
+      document.getElementById('findLemmingId').focus();
+      break;
     case 'pan-up': camera.targetPanY -= moveSpeed * 0.5; break;
     case 'pan-down': camera.targetPanY += moveSpeed * 0.5; break;
     case 'pan-left': camera.targetPanX -= moveSpeed; break;
@@ -499,6 +505,24 @@ document.querySelector('#newMapDialog form')?.addEventListener('submit', (e) => 
 
 document.getElementById('cancelMapBtn')?.addEventListener('click', () => {
   document.getElementById('newMapDialog').close();
+});
+
+document.querySelector('#findLemmingDialog form')?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const idStr = document.getElementById('findLemmingId').value.trim();
+
+  // Find the lemming by ID
+  const index = lemmings.findIndex(l => l.id === idStr);
+
+  if (index !== -1) {
+    document.getElementById('findLemmingDialog').close();
+
+    // Set it as the query target and open the dialog
+    appState.queryTarget = { type: 'lemming', index };
+    openQueryDialog();
+  } else {
+    alert('Lemming not found.');
+  }
 });
 
 export function updateViewMenuUI() {

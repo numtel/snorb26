@@ -35,6 +35,8 @@
             Water Level
             <input id="waterLevel" type="range" min="1" max="255" step="1" value="86">
           </label>
+          <div class="hr"></div>
+          <button data-command="find-lemming" data-key="F3">Find Lemming...</button>
         </dialog>
       </div>
       <div class="menu-container">
@@ -219,6 +221,21 @@
         <div class="controls">
           <button type="button" class="button" id="cancelQueryBtn">Cancel</button>
           <button type="submit" class="button" id="saveQueryBtn">Apply</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+  <dialog id="findLemmingDialog">
+    <div class="content">
+      <form>
+        <h2>Find Lemming</h2>
+        <fieldset>
+          <legend>Lemming ID</legend>
+          <input type="text" id="findLemmingId" required autofocus>
+        </fieldset>
+        <div class="controls">
+          <button type="button" class="button" onclick="document.getElementById('findLemmingDialog').close()">Cancel</button>
+          <button type="submit" class="button">Find</button>
         </div>
       </form>
     </div>
