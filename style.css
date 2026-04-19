@@ -5,7 +5,7 @@ body.window-inactive canvas {
   outline: 5px solid red;
   outline-offset: -5px; /* Pulls the outline inside the viewport edge */
 }
-#scene { position:fixed; inset:0; width:100%; height:calc(100% - 45px); top:45px; touch-action:none; }
+#scene { position:fixed; inset:0; width:100%; height:100%; touch-action:none; }
 #hud {
   position:fixed; z-index: 99; right:12px; bottom:12px;
   padding:8px 10px; border-radius:10px;
