@@ -94,6 +94,8 @@ Defines a lemming.
 * **babyCooldown**: (Optional) Float, remaining time in seconds until lemming can have another baby
 * **glistenTimer**: (Optional) Float, time in seconds that a baby will glisten and shine
 * **targetNewbornId**: (Optional), String, ID of the newborn to which they'll angle towards
+* **danceProclivity**: (Optional) Float between 0.0 and 1.0 representing how likely they are to randomly start dancing.
+* **parentIds**: (Optional) Comma-separated list of parent IDs for monitoring lineage.
 
 > [!CAUTION]
 > Lemmings **SHOULD** have their own free will.

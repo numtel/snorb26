@@ -456,6 +456,8 @@ function updateLemmings(dt) {
                     partner.babyCooldown = simParams.babyCooldown;
                     const baby = {
                         id: Math.random().toString(36).substr(2, 9),
+                        parentIds: [lem.id, partner.id],
+                        danceProclivity: Math.random(),
                         partnerId: null,
                         x: (lem.x + partner.x) / 2, y: (lem.y + partner.y) / 2,
                         a: Math.random() * Math.PI * 2,
@@ -508,7 +510,10 @@ function updateLemmings(dt) {
 
         // New behavior activators
         if (!lem.isDigging && !lem.isRaising && !lem.isDancing) {
-            if (lem.danceRestTimer <= 0 && Math.random() < 0.001 * dt) {
+            // Calculate dynamic chance based on proclivity
+            let danceChance = 0.0001 + (0.005 * (lem.danceProclivity || 0));
+
+            if (lem.danceRestTimer <= 0 && Math.random() < danceChance * dt) {
                 lem.isDancing = true;
                 lem.danceTimer = 5.0 + Math.random() * 5.0;
             } else if (Math.random() < 0.02 * dt) {

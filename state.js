@@ -315,6 +315,10 @@ export function serializeMap() {
     if (l.glistenTimer > 0) props.push(['glistenTimer', l.glistenTimer.toFixed(2)]);
     if (l.targetNewbornId) props.push(['targetNewbornId', l.targetNewbornId]);
     props.push(['grownUp', l.grownUp || false]);
+    props.push(['danceProclivity', (l.danceProclivity || 0).toFixed(3)]);
+    if (l.parentIds && l.parentIds.length > 0) {
+        props.push(['parentIds', l.parentIds.join(',')]);
+    }
     out += formatBlock('lemming', l, props);
   });
 
@@ -538,6 +542,8 @@ export function deserializeMap(text) {
           babyCooldown: parseFloat(props.babyCooldown) || 0,
           glistenTimer: parseFloat(props.glistenTimer) || 0,
           targetNewbornId: props.targetNewbornId || null,
+          danceProclivity: parseFloat(props.danceProclivity) || Math.random(),
+          parentIds: props.parentIds ? props.parentIds.split(',') : [],
         };
         data.lemmings.push(lem);
       }

@@ -32,6 +32,8 @@ export function placeLemmingAt(x, y) {
         age: 0,
         babyCooldown: 0,
         glistenTimer: 0,
+        danceProclivity: Math.random(),
+        parentIds: [],
     });
     saveMapToLocal();
 }
@@ -89,6 +91,8 @@ export function cleaveLemmingAt(x, y) {
                 age: 0,             // Start at age 0 to "grow" into their own lemming
                 babyCooldown: 0,
                 glistenTimer: 0,
+                danceProclivity: Math.random(),
+                parentIds: [closest.id], // Make the cleaved clones children of the original
             });
         }
         saveMapToLocal();

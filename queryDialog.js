@@ -28,6 +28,10 @@ export function openQueryDialog() {
         html += `<label class="text"><span>Partner ID:</span> <input type="text" id="q_partner" value="${l.partnerId || ''}"></label>`;
         html += `</div>`;
         html += `<div class="row">`;
+        html += `<label class="text"><span>Dance Proclivity:</span> <input type="text" value="${(l.danceProclivity || 0).toFixed(3)}" readonly></label>`;
+        html += `<label class="text"><span>Parents:</span> <input type="text" value="${(l.parentIds || []).join(', ')}" readonly></label>`;
+        html += `</div>`;
+        html += `<div class="row">`;
         html += `<label class="text"><span>Age:</span> <input type="text" id="q_age" value="${l.age}" ></label>`;
         html += `<label class="text"><span>Speed:</span> <input type="text" id="q_s" value="${l.s}" ></label>`;
         html += `</div>`;
