@@ -68,10 +68,11 @@ input[readonly] { color:var(--disabledText); }
   z-index: 2;
 }
 
-.event-text.true_love { color: #ff88ff; }
-.event-text.rejection { color: #dddddd; }
-.event-text.birth     { color: #ffffaa; }
-.event-text.death     { color: #888888; }
+.event-text.true_love    { color: #ff88ff; }
+.event-text.rejection    { color: #dddddd; }
+.event-text.birth        { color: #ffffaa; }
+.event-text.death        { color: #888888; }
+.event-text.party_pooper { color: #aaaaaa; }
 
 .event-emoji {
   position: absolute;

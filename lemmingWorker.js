@@ -527,7 +527,7 @@ function updateLemmings(dt) {
         // New behavior activators
         if (!lem.isDigging && !lem.isRaising && !lem.isDancing) {
             // Calculate dynamic chance based on proclivity
-            let danceChance = 0.0001 + (0.005 * (lem.danceProclivity || 0));
+            let danceChance = 0.0001 + (0.05 * (lem.danceProclivity || 0));
 
             if (lem.danceRestTimer <= 0 && Math.random() < danceChance * dt) {
                 lem.isDancing = true;
