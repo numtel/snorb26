@@ -28,6 +28,13 @@ function distToSegmentSq(p, v, w) {
     t = Math.max(0, Math.min(1, t));
     return distSq(p, { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) });
 }
+function ccw(A, B, C) {
+    return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+}
+
+function segmentsIntersect(A, B, C, D) {
+    return ccw(A, C, D) !== ccw(B, C, D) && ccw(A, B, C) !== ccw(A, B, D);
+}
 
 self.onmessage = function(e) {
     if (e.data.type === 'sync') {
@@ -281,6 +288,30 @@ function updateLemmings(dt) {
                 let nx = lem.x + Math.cos(lem.a);
                 let ny = lem.y + Math.sin(lem.a);
 
+                // Check for extrusions before moving or raising terrain
+                let hitObstacle = false;
+                const currentPos = { x: lem.x, y: lem.y };
+                const nextPos = { x: nx, y: ny };
+
+                for (const cache of extCache) {
+                    const ext = cache.ext;
+                    for (let i = 0; i < ext.points.length - 1; i++) {
+                        const p1 = ext.points[i];
+                        const p2 = ext.points[i+1];
+                        if (distToSegmentSq(nextPos, p1, p2) < cache.minSqDist ||
+                            segmentsIntersect(currentPos, nextPos, p1, p2)) {
+                            hitObstacle = true; break;
+                        }
+                    }
+                    if (hitObstacle) break;
+                }
+
+                if (hitObstacle) {
+                    lem.isRaising = false;
+                    lem.a += Math.PI; // Turn around!
+                    continue;
+                }
+
                 if (nx >= 0 && nx < GRID_W - 1 && ny >= 0 && ny < GRID_H - 1) {
                     const cX = Math.floor(lem.x), cY = Math.floor(lem.y);
                     const nX = Math.floor(nx), nY = Math.floor(ny);
@@ -373,11 +404,19 @@ function updateLemmings(dt) {
         let hitCubeLx = 0; // Local X of the hit
         let hitCubeLy = 0; // Local Y of the hit
 
+        const currentPos = { x: lem.x, y: lem.y };
+        const nextPos = { x: nx, y: ny };
+
         // Turn in a new direction if hitting a path (extrusion)
         for (const cache of extCache) {
             const ext = cache.ext;
             for (let i = 0; i < ext.points.length - 1; i++) {
-                if (distToSegmentSq({x: nx, y: ny}, ext.points[i], ext.points[i+1]) < cache.minSqDist) {
+                const p1 = ext.points[i];
+                const p2 = ext.points[i+1];
+
+                // Check if they land inside the boundary OR if their path crossed the centerline
+                if (distToSegmentSq(nextPos, p1, p2) < cache.minSqDist ||
+                    segmentsIntersect(currentPos, nextPos, p1, p2)) {
                     hitObstacle = true; break;
                 }
             }
